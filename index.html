@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>地推空间勘测系统 - 稳定版</title>
+    <title>地推空间勘测系统 - 稳定连续版</title>
     <style>
         :root { --primary: #2b6cb0; --bg: #f7fafc; --text: #2d3748; --border: #e2e8f0; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; color: var(--text); padding-bottom: 60px; }
@@ -23,12 +23,12 @@
         
         input[type="text"], input[type="number"] { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box; margin-bottom: 10px; font-size: 14px; }
         
-        .btn { padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; box-sizing: border-box; color: #fff; margin-bottom: 10px; display: inline-block; text-align: center; transition: all 0.2s; }
+        .btn { padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; box-sizing: border-box; color: #fff; margin-bottom: 10px; display: inline-block; text-align: center; transition: all 0.2s; -webkit-tap-highlight-color: transparent; }
         .btn-primary { background: var(--primary); }
         .btn-success { background: #48bb78; }
         .btn-warning { background: #ed8936; }
         .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
-        .btn:disabled { background: #cbd5e0 !important; color: #a0aec0 !important; cursor: not-allowed; }
+        .btn:disabled { background: #cbd5e0 !important; color: #a0aec0 !important; cursor: not-allowed; opacity: 0.7; }
         .btn-danger { background: #f56565; color: white; padding: 6px 12px; font-size: 12px; width: auto; }
         
         .list-item { border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-bottom: 10px; background: #fbfbfc; position: relative; }
@@ -39,22 +39,20 @@
         
         #map-container { width: 100%; height: 250px; border-radius: 8px; margin-bottom: 10px; display: none; border: 1px solid var(--border); overflow: hidden;}
         
-        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 999; display: none; flex-direction: column; justify-content: center; padding: 15px; }
-        .modal-content { background: #fff; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 1000; display: none; flex-direction: column; justify-content: center; padding: 15px; }
+        .modal-content { background: #fff; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; max-height: 90vh; }
         .modal-header { padding: 15px; font-weight: bold; font-size: 16px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-        .modal-body { height: 350px; position: relative; width: 100%; }
-        .modal-footer { padding: 15px; display: flex; gap: 10px; }
-        .coord-status { font-size: 12px; padding: 6px 10px; border-radius: 4px; display: inline-block; margin-bottom: 10px; width: 100%; box-sizing: border-box; }
+        .modal-body { height: 400px; position: relative; width: 100%; background: #f0f0f0; }
+        .modal-footer { padding: 15px; display: flex; gap: 10px; background: #fff; }
+        .coord-status { font-size: 12px; padding: 8px; border-radius: 4px; display: inline-block; margin-bottom: 10px; width: 100%; box-sizing: border-box; cursor: pointer; text-align: center; }
         .coord-missing { background: #fff5f5; color: #c53030; border: 1px solid #feb2b2; }
         .coord-ok { background: #f0fff4; color: #276749; border: 1px solid #9ae6b4; }
     </style>
 
-    <!-- 高德地图API配置 -->
     <script type="text/javascript">
         window._AMapSecurityConfig = { securityJsCode: '35d17572e3aeec5bf42bfe5f4cec1b3c' }
     </script>
     <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=cb9a804d2aa1bc079283ada9d0f1ec3f&plugin=AMap.Geolocation,AMap.MapType"></script>
-
 </head>
 <body>
 
@@ -71,14 +69,14 @@
     <!-- Tab 1: 预选点位 -->
     <div id="tab-0" class="tab-content active">
         <div class="card">
-            <h3>新增预选点 (需要GPS)</h3>
-            <button class="btn btn-outline" onclick="getAMapLocation()" id="geo-btn">点击获取定位并微调</button>
-            <div id="geo-status" style="font-size: 13px; color: #718096; margin-bottom: 10px; font-weight: bold;">等待定位...</div>
+            <h3>新增预选点 (连续定位已优化)</h3>
+            <button class="btn btn-outline" onclick="getAMapLocation('main')" id="geo-btn-main">点击获取定位并微调</button>
+            <div id="geo-status-main" style="font-size: 13px; color: #718096; margin-bottom: 10px; font-weight: bold;">等待指令...</div>
             
             <div id="map-container"></div>
             <input type="hidden" id="temp_lat"><input type="hidden" id="temp_lng">
             
-            <input type="text" id="candidate_name" placeholder="点位名称 (如: 东门保安亭)">
+            <input type="text" id="candidate_name" placeholder="点位名称 (如: 正门出口)">
             <div style="margin-bottom: 10px; font-size: 14px;">
                 <label><input type="checkbox" id="cond_power"> 取电方便</label> &nbsp;&nbsp;
                 <label><input type="checkbox" id="cond_prop"> 关系到位</label>
@@ -91,7 +89,7 @@
     <!-- Tab 2: 楼栋录入 -->
     <div id="tab-1" class="tab-content">
         <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <button class="btn btn-primary" style="flex: 1;" onclick="addBuilding()">➕ 新增一栋</button>
+            <button class="btn btn-primary" style="flex: 1;" onclick="addBuilding()">➕ 新增楼栋</button>
             <button class="btn btn-warning" style="flex: 1; border:none;" onclick="cloneLastBuilding()">📋 复制上一栋</button>
         </div>
         <div id="buildings-list"></div>
@@ -117,27 +115,27 @@
     <div class="modal-overlay" id="picker-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <span id="picker-title">楼栋坐标微调</span>
-                <span style="font-size: 24px; color: #a0aec0; cursor: pointer; padding: 0 10px;" onclick="closePicker()">×</span>
+                <span id="picker-title" style="flex:1;">楼栋位置微调</span>
+                <!-- 产品优化：这里新增了定位按钮，补全了逻辑闭环 -->
+                <button id="modal-geo-btn" class="btn btn-outline" style="padding: 4px 8px; font-size: 12px; margin: 0 10px; width: auto;" onclick="getAMapLocation('picker')">📍 定位我</button>
+                <span style="font-size: 28px; color: #a0aec0; cursor: pointer; padding: 0 10px;" onclick="closePicker()">×</span>
             </div>
             <div id="picker-map" class="modal-body"></div>
             <div class="modal-footer">
                 <button class="btn btn-outline" style="flex: 1; margin:0;" onclick="closePicker()">取消</button>
-                <button class="btn btn-primary" style="flex: 2; margin:0;" onclick="confirmPicker()">✅ 确认位置</button>
+                <button class="btn btn-primary" style="flex: 2; margin:0;" onclick="confirmPicker()">✅ 确定此位置</button>
             </div>
         </div>
     </div>
 
     <script>
-        // --- 1. 全局变量与单例模式初始化 ---
+        // --- 核心变量 ---
         let appData = { community_name: "", candidates: [], buildings: [] };
-        let map = null, marker = null;
+        let mainMap = null, mainMarker = null;
         let pickerMap = null, pickerMarker = null;
-        let currentPickingBuildingIndex = -1; 
-        
-        // 【关键】全局只维护一个定位实例，避免重复创建导致失效
-        let geolocationInstance = null;
+        let currentBuildingIndex = -1;
 
+        // --- 初始化加载 ---
         window.onload = () => {
             const saved = localStorage.getItem('siteSurveyData');
             if(saved) {
@@ -146,7 +144,7 @@
                     document.getElementById('community_name').value = appData.community_name || "";
                     renderCandidates();
                     renderBuildings();
-                } catch(e) {}
+                } catch(e) { console.error("Data recovery failed", e); }
             }
         };
 
@@ -162,96 +160,91 @@
             if(index === 2) updateSummary();
         }
 
-        // --- 2. 优化后的定位逻辑 (单例模式 + 防抖) ---
-        function getAMapLocation() {
-            const status = document.getElementById('geo-status');
-            const btn = document.getElementById('geo-btn');
+        // --- 连续定位核心逻辑（修复版：解除单例，每次动态请求） ---
+        function getAMapLocation(type) {
+            const statusId = type === 'main' ? 'geo-status-main' : 'picker-title';
+            const btnId = type === 'main' ? 'geo-btn-main' : 'modal-geo-btn';
+            const statusEl = document.getElementById(statusId);
+            const btnEl = document.getElementById(btnId);
 
-            if(btn.disabled) return; // 防止重复点击
-            
-            btn.disabled = true;
-            status.innerHTML = "⏳ 正在卫星搜星，请保持在开阔地带...";
+            if (btnEl) btnEl.disabled = true;
+            statusEl.innerText = "⏳ 正在请求高德卫星...";
 
-            // 初始化定位插件（仅一次）
-            if (!geolocationInstance) {
-                geolocationInstance = new AMap.Geolocation({
-                    enableHighAccuracy: true, 
-                    timeout: 10000,           // 放宽超时到10秒
-                    maximumAge: 0,            // 绝不使用缓存
-                    showMarker: false, 
-                    showCircle: false
+            // 弃用单例模式，改用按需加载并每次实例化，防止浏览器缓存锁死回调
+            AMap.plugin('AMap.Geolocation', function() {
+                const geolocation = new AMap.Geolocation({
+                    enableHighAccuracy: true,
+                    timeout: 8000,
+                    maximumAge: 0, // 强制：绝不使用缓存
+                    showButton: false,
+                    convert: true
                 });
-            }
 
-            geolocationInstance.getCurrentPosition(function(locStatus, result) {
-                btn.disabled = false; // 无论成功失败，恢复按钮
-                
-                if(locStatus === 'complete') {
-                    const lng = result.position.lng;
-                    const lat = result.position.lat;
-                    document.getElementById('temp_lng').value = lng;
-                    document.getElementById('temp_lat').value = lat;
-                    status.innerHTML = `<span style="color:#48bb78">✅ 定位成功！</span>`;
-                    showMapAndMarker(lng, lat);
-                } else {
-                    console.error("定位具体原因:", result);
-                    status.innerHTML = `<span style="color:#f56565">❌ 定位失败: ${result.message || '超时'}，请手动在地图微调</span>`;
-                    // 即使失败，也用默认坐标展示地图，允许用户手动拉动大头针
-                    showMapAndMarker(116.397428, 39.90923);
-                }
+                geolocation.getCurrentPosition((status, result) => {
+                    if (btnEl) btnEl.disabled = false;
+                    
+                    if (status === 'complete') {
+                        const pos = [result.position.lng, result.position.lat];
+                        const accuracyStr = result.accuracy ? `(精度${result.accuracy}m)` : '';
+                        
+                        if (type === 'main') {
+                            document.getElementById('temp_lng').value = pos[0];
+                            document.getElementById('temp_lat').value = pos[1];
+                            statusEl.innerHTML = `<span style="color:#48bb78">✅ 定位成功 ${accuracyStr}</span>`;
+                            initMainMap(pos);
+                        } else {
+                            statusEl.innerText = `✅ 自动定位已刷新 ${accuracyStr}`;
+                            updatePickerMap(pos);
+                        }
+                    } else {
+                        // 改善用户反馈，翻译常见的开发者错误信息
+                        let errorMsg = "❌ 定位失败: ";
+                        if(result.message.includes("permission denied")) {
+                            errorMsg += "请在系统设置中允许浏览器访问位置";
+                        } else if(result.message.includes("timeout")) {
+                            errorMsg += "请求超时，请移步至开阔地带";
+                        } else {
+                            errorMsg += "请直接手动在地图上标记";
+                        }
+                        
+                        statusEl.innerText = errorMsg;
+                        
+                        // 即使失败，也提供一个保底的地图让用户可以手动标定（默认北京或上次缓存位置）
+                        if (type === 'main') {
+                            let defaultPos = [116.397, 39.909];
+                            if(document.getElementById('temp_lng').value) {
+                                defaultPos = [parseFloat(document.getElementById('temp_lng').value), parseFloat(document.getElementById('temp_lat').value)];
+                            }
+                            initMainMap(defaultPos);
+                        }
+                    }
+                });
             });
         }
 
-        function showMapAndMarker(lng, lat) {
-            const mapDiv = document.getElementById('map-container');
-            mapDiv.style.display = 'block';
-            if (!map) {
-                map = new AMap.Map('map-container', { zoom: 17, center: [lng, lat] });
-                marker = new AMap.Marker({ position: [lng, lat], draggable: true });
-                map.add(marker);
-                marker.on('dragend', function(e) {
+        // --- 主页面地图逻辑 ---
+        function initMainMap(pos) {
+            document.getElementById('map-container').style.display = 'block';
+            if (!mainMap) {
+                mainMap = new AMap.Map('map-container', { zoom: 17, center: pos });
+                mainMarker = new AMap.Marker({ position: pos, draggable: true, map: mainMap });
+                mainMarker.on('dragend', (e) => {
                     document.getElementById('temp_lng').value = e.lnglat.lng;
                     document.getElementById('temp_lat').value = e.lnglat.lat;
                 });
             } else {
-                map.setCenter([lng, lat]);
-                marker.setPosition([lng, lat]);
+                mainMap.setCenter(pos);
+                mainMarker.setPosition(pos);
             }
         }
 
-        // --- 3. 楼栋选点与业务逻辑 ---
-        function addCandidate() {
-            const name = document.getElementById('candidate_name').value;
-            const lat = document.getElementById('temp_lat').value;
-            const lng = document.getElementById('temp_lng').value;
-            if(!name || !lat) return alert("必须获取定位并填写名称");
-            appData.candidates.push({ 
-                candidate_id: 'c_' + Date.now(), 
-                name: name, 
-                lat: parseFloat(lat), 
-                lng: parseFloat(lng), 
-                conditions: { has_power: document.getElementById('cond_power').checked, good_property: document.getElementById('cond_prop').checked } 
-            });
-            document.getElementById('candidate_name').value = '';
-            saveData(); renderCandidates();
-        }
-
-        function renderCandidates() {
-            document.getElementById('candidates-list').innerHTML = appData.candidates.map((c, index) => `
-                <div class="list-item">
-                    <button class="btn-danger delete-btn" onclick="deleteCandidate(${index})">删除</button>
-                    <div><b>📍 ${c.name}</b></div>
-                    <div style="font-size:12px; color:#999;">${c.lng.toFixed(5)}, ${c.lat.toFixed(5)}</div>
-                </div>
-            `).join('');
-        }
-
-        function deleteCandidate(index) { if(confirm("删除该点？")) { appData.candidates.splice(index, 1); saveData(); renderCandidates(); } }
-
+        // --- 楼柜录入与模态框地图逻辑 ---
         function addBuilding(name = "") {
-            const len = appData.buildings.length;
-            const bName = name || (len + 1) + "栋";
-            appData.buildings.push({ building_name: bName, lat: null, lng: null, units: [{name:"1单元", households: ""}] });
+            appData.buildings.push({ 
+                building_name: name || (appData.buildings.length + 1) + "栋", 
+                lat: null, lng: null, 
+                units: [{name:"1单元", households: ""}] 
+            });
             saveData(); renderBuildings();
         }
 
@@ -265,14 +258,14 @@
         function renderBuildings() {
             document.getElementById('buildings-list').innerHTML = appData.buildings.map((b, i) => `
                 <div class="card">
-                    <div style="display:flex; justify-content:space-between;">
-                        <input type="text" value="${b.building_name}" onchange="updateBName(${i}, this.value)" style="width:100px; font-weight:bold;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                        <input type="text" value="${b.building_name}" onchange="updateBName(${i}, this.value)" style="width:100px; font-weight:bold; margin:0;">
                         <button class="btn-danger" onclick="deleteBuilding(${i})">删除</button>
                     </div>
                     <div class="coord-status ${b.lat?'coord-ok':'coord-missing'}" onclick="openPicker(${i})">
-                        ${b.lat ? '✅ 已定位 ' + b.lng.toFixed(4) : '❌ 尚未定位 (点击标记屋顶)'}
+                        ${b.lat ? '✅ 位置已标记 (点击重改)' : '❌ 尚未标记位置 (点击进入卫星图)'}
                     </div>
-                    <div>
+                    <div id="units-${i}">
                         ${b.units.map((u, ui) => `
                             <div class="unit-row">
                                 <input type="text" value="${u.name}" onchange="updateUnit(${i},${ui},'name',this.value)" style="flex:1">
@@ -281,38 +274,90 @@
                             </div>
                         `).join('')}
                     </div>
-                    <button class="btn btn-outline" style="padding:5px; font-size:12px;" onclick="addUnit(${i})">+ 单元</button>
+                    <button class="btn btn-outline" style="padding:5px; font-size:12px; margin:0;" onclick="addUnit(${i})">+ 单元</button>
                 </div>
             `).join('');
         }
 
+        // --- 楼栋选点地图逻辑 ---
         function openPicker(i) {
-            currentPickingBuildingIndex = i;
-            document.getElementById('picker-modal').style.display = 'flex';
+            currentBuildingIndex = i;
             const b = appData.buildings[i];
+            const overlay = document.getElementById('picker-modal');
+            overlay.style.display = 'flex';
+            document.getElementById('picker-title').innerText = "楼栋位置微调";
+            
+            // 确定中心点
             let center = [116.397, 39.909];
             if(b.lat) center = [b.lng, b.lat];
             else if(appData.candidates.length > 0) center = [appData.candidates[0].lng, appData.candidates[0].lat];
 
-            if(!pickerMap) {
-                pickerMap = new AMap.Map('picker-map', { zoom: 18, layers: [new AMap.TileLayer.Satellite()] });
-                pickerMarker = new AMap.Marker({ draggable: false });
-                pickerMap.add(pickerMarker);
-                pickerMap.on('click', e => pickerMarker.setPosition(e.lnglat));
+            // 延迟一点初始化，确保容器尺寸已固定
+            setTimeout(() => {
+                if (!pickerMap) {
+                    pickerMap = new AMap.Map('picker-map', {
+                        zoom: 18,
+                        center: center,
+                        layers: [new AMap.TileLayer.Satellite()]
+                    });
+                    pickerMarker = new AMap.Marker({ position: center, draggable: true, map: pickerMap });
+                    pickerMap.on('click', (e) => pickerMarker.setPosition(e.lnglat));
+                } else {
+                    pickerMap.setCenter(center);
+                    pickerMarker.setPosition(center);
+                }
+                pickerMap.rebind(); 
+                pickerMap.setZoom(18);
+            }, 100);
+        }
+
+        function updatePickerMap(pos) {
+            if (pickerMap && pickerMarker) {
+                pickerMap.setCenter(pos);
+                pickerMarker.setPosition(pos);
             }
-            pickerMap.setCenter(center);
-            pickerMarker.setPosition(center);
         }
 
         function confirmPicker() {
             const pos = pickerMarker.getPosition();
-            appData.buildings[currentPickingBuildingIndex].lat = pos.lat;
-            appData.buildings[currentPickingBuildingIndex].lng = pos.lng;
+            appData.buildings[currentBuildingIndex].lat = pos.lat;
+            appData.buildings[currentBuildingIndex].lng = pos.lng;
             saveData(); renderBuildings(); closePicker();
         }
-        function closePicker() { document.getElementById('picker-modal').style.display = 'none'; }
 
-        // --- 4. 辅助功能 ---
+        function closePicker() {
+            document.getElementById('picker-modal').style.display = 'none';
+        }
+
+        // --- 其它逻辑 ---
+        function addCandidate() {
+            const name = document.getElementById('candidate_name').value;
+            const lat = document.getElementById('temp_lat').value;
+            if(!name || !lat) return alert("名称和坐标缺一不可");
+            appData.candidates.push({ 
+                name, 
+                lat: parseFloat(lat), 
+                lng: parseFloat(document.getElementById('temp_lng').value),
+                conditions: { 
+                    has_power: document.getElementById('cond_power').checked, 
+                    good_property: document.getElementById('cond_prop').checked 
+                }
+            });
+            saveData(); renderCandidates();
+            // 清空输入框方便连续录入
+            document.getElementById('candidate_name').value = '';
+        }
+
+        function renderCandidates() {
+            document.getElementById('candidates-list').innerHTML = appData.candidates.map((c, index) => `
+                <div class="list-item">
+                    <button class="btn-danger delete-btn" onclick="deleteCandidate(${index})">删除</button>
+                    <div><b>📍 ${c.name}</b></div>
+                </div>
+            `).join('');
+        }
+
+        function deleteCandidate(index) { if(confirm("删除此点？")) { appData.candidates.splice(index, 1); saveData(); renderCandidates(); } }
         function updateBName(i, v) { appData.buildings[i].building_name = v; saveData(); }
         function updateUnit(i, ui, k, v) { appData.buildings[i].units[ui][k] = k==='households'?parseInt(v):v; saveData(); }
         function addUnit(i) { appData.buildings[i].units.push({name:(appData.buildings[i].units.length+1)+'单元', households:""}); saveData(); renderBuildings(); }
@@ -322,28 +367,26 @@
         function updateSummary() {
             let totalHh = 0;
             appData.buildings.forEach(b => {
-                b.total_households = b.units.reduce((s, u) => s + (parseInt(u.households) || 0), 0);
-                totalHh += b.total_households;
+                totalHh += b.units.reduce((s, u) => s + (parseInt(u.households) || 0), 0);
             });
-            document.getElementById('summary-text').innerHTML = `小区：${appData.community_name} | 点位：${appData.candidates.length} | 楼：${appData.buildings.length} | 总户数：${totalHh}`;
+            document.getElementById('summary-text').innerHTML = `小区：${appData.community_name || '未命名'} | 点位：${appData.candidates.length} | 楼：${appData.buildings.length} | 总户数：${totalHh}`;
             document.getElementById('json-output').value = JSON.stringify(appData, null, 2);
         }
 
         function copyJSON() {
             const out = document.getElementById('json-output');
-            out.select(); document.execCommand('copy'); alert("已复制");
+            out.select(); document.execCommand('copy'); alert("JSON 已复制到剪贴板");
         }
 
         function importJSON() {
             try {
-                appData = JSON.parse(document.getElementById('json-input').value);
-                document.getElementById('community_name').value = appData.community_name;
-                saveData(); renderCandidates(); renderBuildings();
-                alert("导入成功");
-            } catch(e) { alert("格式错误"); }
+                const val = JSON.parse(document.getElementById('json-input').value);
+                appData = val; document.getElementById('community_name').value = appData.community_name || "";
+                saveData(); renderCandidates(); renderBuildings(); alert("导入成功");
+            } catch(e) { alert("JSON 格式错误"); }
         }
 
-        function clearAllData() { if(confirm("清空？")) { localStorage.clear(); location.reload(); } }
+        function clearAllData() { if(confirm("清空？数据将无法找回")) { localStorage.clear(); location.reload(); } }
     </script>
 </body>
 </html>
