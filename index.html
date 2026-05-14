@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>地推空间勘测系统 - 极智版</title>
+    <title>地推空间勘测系统 - 闭环版</title>
     <style>
         :root { --primary: #2b6cb0; --bg: #f7fafc; --text: #2d3748; --border: #e2e8f0; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; color: var(--text); padding-bottom: 60px; }
@@ -26,6 +26,7 @@
         .btn { padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; box-sizing: border-box; color: #fff; margin-bottom: 10px; }
         .btn-primary { background: var(--primary); }
         .btn-success { background: #48bb78; }
+        .btn-warning { background: #ed8936; }
         .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
         .btn-danger { background: #f56565; color: white; padding: 6px 12px; font-size: 12px; width: auto; }
         
@@ -34,20 +35,19 @@
         .unit-row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
         .unit-row input { margin-bottom: 0; }
         
-        #json-output { width: 100%; height: 200px; font-family: monospace; font-size: 12px; border: 1px solid #ccc; border-radius: 6px; padding: 10px; box-sizing: border-box; }
+        .code-box { width: 100%; height: 120px; font-family: monospace; font-size: 12px; border: 1px solid #ccc; border-radius: 6px; padding: 10px; box-sizing: border-box; }
+        #json-output { background: #f7fafc; } /* 导出框置灰 */
+        
         .tag { background: #ebf8ff; color: #3182ce; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 5px; }
-
-        /* 高德地图容器样式 */
         #map-container { width: 100%; height: 250px; border-radius: 8px; margin-bottom: 10px; display: none; border: 1px solid var(--border); overflow: hidden;}
     </style>
 
-    <!-- 【准备工作1：配置高德地图的安全密钥】 -->
+    <!-- 【高德地图密钥与API加载】 -->
     <script type="text/javascript">
         window._AMapSecurityConfig = {
-            securityJsCode: '35d17572e3aeec5bf42bfe5f4cec1b3c', // 注意：请替换为你的真实安全密钥
+            securityJsCode: '35d17572e3aeec5bf42bfe5f4cec1b3c',
         }
     </script>
-    <!-- 【准备工作2：引入高德地图 JS API】 -->
     <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=cb9a804d2aa1bc079283ada9d0f1ec3f&plugin=AMap.Geolocation"></script>
 
 </head>
@@ -60,7 +60,7 @@
     <div class="tabs">
         <div class="tab active" onclick="switchTab(0)">📍 预选点位</div>
         <div class="tab" onclick="switchTab(1)">🏘️ 楼栋录入</div>
-        <div class="tab" onclick="switchTab(2)">📦 结算导出</div>
+        <div class="tab" onclick="switchTab(2)">📦 导入导出</div>
     </div>
 
     <!-- Tab 1: 预选点位 -->
@@ -70,7 +70,6 @@
             <button class="btn btn-outline" onclick="getAMapLocation()" id="geo-btn">1. 获取定位与微调</button>
             <div id="geo-status" style="font-size: 13px; color: #718096; margin-bottom: 10px; font-weight: bold;">未获取坐标</div>
             
-            <!-- 核心：地图微调容器 -->
             <div id="map-container"></div>
             
             <input type="hidden" id="temp_lat"><input type="hidden" id="temp_lng">
@@ -89,37 +88,47 @@
     <div id="tab-1" class="tab-content">
         <div style="display: flex; gap: 10px; margin-bottom: 15px;">
             <button class="btn btn-primary" style="flex: 1;" onclick="addBuilding()">➕ 新增一栋</button>
-            <button class="btn btn-outline" style="flex: 1; background:#ed8936; color:#fff; border:none;" onclick="cloneLastBuilding()">📋 复制上一栋</button>
+            <button class="btn btn-warning" style="flex: 1; border:none;" onclick="cloneLastBuilding()">📋 复制上一栋</button>
         </div>
         <div id="buildings-list"></div>
     </div>
 
-    <!-- Tab 3: 结算导出 -->
+    <!-- Tab 3: 数据导入与导出 -->
     <div id="tab-2" class="tab-content">
+        
+        <!-- 导出区块 -->
         <div class="card">
-            <h3>数据校验与导出</h3>
+            <h3>⬆️ 结算与导出</h3>
             <p id="summary-text" style="font-size: 14px; color: #4a5568;"></p>
-            <textarea id="json-output" readonly placeholder="数据将在此生成..."></textarea>
-            <button class="btn btn-success" style="margin-top: 15px;" onclick="copyJSON()">一键复制 JSON</button>
-            <button class="btn btn-outline" style="margin-top: 10px; border-color: #f56565; color: #f56565;" onclick="clearAllData()">⚠️ 清空当前小区数据</button>
+            <textarea id="json-output" class="code-box" readonly placeholder="数据将在此生成..."></textarea>
+            <button class="btn btn-success" style="margin-top: 15px;" onclick="copyJSON()">一键复制 JSON 给后端</button>
         </div>
+
+        <!-- 导入区块 -->
+        <div class="card">
+            <h3>⬇️ 历史数据导入 (覆盖当前)</h3>
+            <textarea id="json-input" class="code-box" placeholder="粘贴之前的 JSON 代码到这里，以继续编辑..."></textarea>
+            <button class="btn btn-outline" style="margin-top: 15px; border-color: #ed8936; color: #ed8936;" onclick="importJSON()">读取并恢复数据</button>
+        </div>
+
+        <button class="btn btn-danger" style="margin-top: 20px; width:100%; padding: 12px; font-size:14px;" onclick="clearAllData()">⚠️ 清空所有数据 (开始新小区)</button>
     </div>
 
     <script>
         // --- 全局数据 ---
         let appData = { community_name: "", candidates: [], buildings: [] };
-        
-        // 高德地图全局变量
-        let map = null;
-        let marker = null;
+        let map = null, marker = null;
 
+        // 初始化加载
         window.onload = () => {
             const saved = localStorage.getItem('siteSurveyData');
             if(saved) {
-                appData = JSON.parse(saved);
-                document.getElementById('community_name').value = appData.community_name;
-                renderCandidates();
-                renderBuildings();
+                try {
+                    appData = JSON.parse(saved);
+                    document.getElementById('community_name').value = appData.community_name || "";
+                    renderCandidates();
+                    renderBuildings();
+                } catch(e) { console.error("缓存解析失败", e); }
             }
         };
 
@@ -135,36 +144,61 @@
             if(index === 2) updateSummary();
         }
 
-        // ==========================================
-        // 模块 1：高德地图核心交互逻辑 (精准定位与微调)
-        // ==========================================
+        // --- 模块：导入功能 (核心新增) ---
+        function importJSON() {
+            const jsonStr = document.getElementById('json-input').value.trim();
+            if (!jsonStr) return alert("请先在框内粘贴 JSON 数据！");
+
+            try {
+                const parsed = JSON.parse(jsonStr);
+                
+                // 基础校验格式
+                if (!parsed.hasOwnProperty('community_name') && !parsed.hasOwnProperty('buildings')) {
+                    throw new Error("识别不到有效的小区字段");
+                }
+
+                if (confirm("🚨 警告：导入数据将完全覆盖你当前正在编辑的内容！确定继续吗？")) {
+                    appData = {
+                        community_name: parsed.community_name || "",
+                        candidates: parsed.candidates || [],
+                        buildings: parsed.buildings || []
+                    };
+                    
+                    // 恢复UI状态
+                    document.getElementById('community_name').value = appData.community_name;
+                    saveData();
+                    renderCandidates();
+                    renderBuildings();
+                    document.getElementById('json-input').value = ""; // 清空输入框
+                    
+                    alert("✅ 数据加载成功！已恢复历史状态。");
+                    switchTab(1); // 跳转到楼栋页让用户确认
+                }
+            } catch (e) {
+                alert("❌ JSON 格式错误或数据损坏，解析失败：\n" + e.message);
+            }
+        }
+
+        // --- 模块 1：高德地图核心交互逻辑 ---
         function getAMapLocation() {
             const status = document.getElementById('geo-status');
             const btn = document.getElementById('geo-btn');
             status.innerText = "⏳ 正在请求高德高精度定位...";
             
-            // 使用高德定位插件
             const geolocation = new AMap.Geolocation({
-                enableHighAccuracy: true,
-                timeout: 8000,          // 8秒超时
-                maximumAge: 0,          // 不使用缓存
-                showMarker: false,      // 自己画，不用系统默认的
-                showCircle: false
+                enableHighAccuracy: true, timeout: 8000, maximumAge: 0, showMarker: false, showCircle: false
             });
 
             geolocation.getCurrentPosition(function(locStatus, result) {
                 if(locStatus === 'complete') {
                     const lng = result.position.lng;
                     const lat = result.position.lat;
-                    
                     document.getElementById('temp_lng').value = lng;
                     document.getElementById('temp_lat').value = lat;
                     status.innerHTML = `<span style="color:#48bb78">✅ 定位成功！若有偏差，请拖动下方地图大头针微调 👇</span>`;
-                    
-                    // 显示地图容器并渲染
                     showMapAndMarker(lng, lat);
                 } else {
-                    status.innerHTML = `<span style="color:#f56565">❌ 定位失败: ${result.message} (请确认HTTPS及手机权限)</span>`;
+                    status.innerHTML = `<span style="color:#f56565">❌ 定位失败: ${result.message}</span>`;
                 }
             });
         }
@@ -173,25 +207,11 @@
             const mapDiv = document.getElementById('map-container');
             mapDiv.style.display = 'block';
 
-            // 初始化地图
             if (!map) {
-                map = new AMap.Map('map-container', {
-                    zoom: 18, // 级别调高，方便看清楼栋细节
-                    center: [lng, lat],
-                    dragEnable: true,
-                    zoomEnable: true
-                });
-
-                // 创建可拖拽的大头针
-                marker = new AMap.Marker({
-                    position: [lng, lat],
-                    draggable: true,
-                    cursor: 'move',
-                    animation: 'AMAP_ANIMATION_DROP' // 掉落动画
-                });
+                map = new AMap.Map('map-container', { zoom: 18, center: [lng, lat], dragEnable: true, zoomEnable: true });
+                marker = new AMap.Marker({ position: [lng, lat], draggable: true, cursor: 'move', animation: 'AMAP_ANIMATION_DROP' });
                 map.add(marker);
 
-                // 监听大头针拖拽结束事件
                 marker.on('dragend', function(e) {
                     const newLng = e.lnglat.lng;
                     const newLat = e.lnglat.lat;
@@ -200,7 +220,6 @@
                     document.getElementById('geo-status').innerHTML = `<span style="color:#ed8936">📍 坐标已人工微调 (经度:${newLng.toFixed(5)}, 纬度:${newLat.toFixed(5)})</span>`;
                 });
             } else {
-                // 如果地图已存在，直接更新中心点和大头针位置
                 map.setCenter([lng, lat]);
                 marker.setPosition([lng, lat]);
             }
@@ -214,46 +233,33 @@
             if(!name || !lat) return alert("必须先获取定位，并填写点位名称！");
 
             appData.candidates.push({
-                candidate_id: 'c_' + Date.now(),
-                name: name,
-                lat: parseFloat(lat),
-                lng: parseFloat(lng),
-                conditions: {
-                    has_power: document.getElementById('cond_power').checked,
-                    good_property: document.getElementById('cond_prop').checked
-                }
+                candidate_id: 'c_' + Date.now(), name: name, lat: parseFloat(lat), lng: parseFloat(lng),
+                conditions: { has_power: document.getElementById('cond_power').checked, good_property: document.getElementById('cond_prop').checked }
             });
 
-            // 清空表单与地图重置
             document.getElementById('candidate_name').value = '';
             document.getElementById('temp_lat').value = '';
             document.getElementById('temp_lng').value = '';
             document.getElementById('geo-status').innerText = '未获取坐标';
-            document.getElementById('map-container').style.display = 'none'; // 隐藏地图
+            document.getElementById('map-container').style.display = 'none'; 
             document.getElementById('cond_power').checked = false;
             document.getElementById('cond_prop').checked = false;
 
-            saveData();
-            renderCandidates();
+            saveData(); renderCandidates();
         }
 
         function renderCandidates() {
-            const box = document.getElementById('candidates-list');
-            box.innerHTML = appData.candidates.map((c, index) => `
+            document.getElementById('candidates-list').innerHTML = appData.candidates.map((c, index) => `
                 <div class="list-item">
                     <button class="btn-danger delete-btn" onclick="deleteCandidate(${index})">删除</button>
                     <div style="font-weight:bold;">📍 ${c.name}</div>
-                    <div style="font-size:12px; color:#718096; margin-top:5px;">
-                        经纬度: ${c.lng.toFixed(5)}, ${c.lat.toFixed(5)}
-                    </div>
+                    <div style="font-size:12px; color:#718096; margin-top:5px;">经纬度: ${c.lng.toFixed(5)}, ${c.lat.toFixed(5)}</div>
                 </div>
             `).join('');
         }
         function deleteCandidate(index) { if(confirm("确定删除该点位？")) { appData.candidates.splice(index, 1); saveData(); renderCandidates(); } }
 
-        // ==========================================
-        // 模块 2 & 3：楼栋录入与结算 (维持原样)
-        // ==========================================
+        // --- 模块 2 & 3：楼栋录入与结算导出 ---
         function addBuilding(defaultName = "", defaultUnits = [{name:"1单元", households: ""}, {name:"2单元", households: ""}]) {
             let nextName = defaultName;
             if(!nextName) {
@@ -272,8 +278,7 @@
         }
 
         function renderBuildings() {
-            const box = document.getElementById('buildings-list');
-            box.innerHTML = appData.buildings.map((b, bIndex) => `
+            document.getElementById('buildings-list').innerHTML = appData.buildings.map((b, bIndex) => `
                 <div class="card" style="border: 1px solid #cbd5e0;">
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
                         <input type="text" value="${b.building_name}" onchange="updateBName(${bIndex}, this.value)" style="width:120px; margin:0; font-weight:bold;">
@@ -282,7 +287,7 @@
                     <div id="units-box-${bIndex}">
                         ${b.units.map((u, uIndex) => `
                             <div class="unit-row">
-                                <input type="text" value="${u.name}" placeholder="单元名" onchange="updateUnit(${bIndex}, ${uIndex}, 'name', this.value)" style="flex:1;">
+                                <input type="text" value="${u.name}" placeholder="单元" onchange="updateUnit(${bIndex}, ${uIndex}, 'name', this.value)" style="flex:1;">
                                 <input type="number" value="${u.households}" placeholder="户数" onchange="updateUnit(${bIndex}, ${uIndex}, 'households', this.value)" style="flex:1;">
                                 <button class="btn-danger" onclick="deleteUnit(${bIndex}, ${uIndex})">X</button>
                             </div>
@@ -316,7 +321,7 @@
             const copyText = document.getElementById("json-output");
             copyText.select();
             document.execCommand("copy");
-            alert("复制成功！请粘贴发送给后端。");
+            alert("复制成功！请发送给后端。");
         }
 
         function clearAllData() {
