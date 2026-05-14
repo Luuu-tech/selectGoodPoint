@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>地推空间勘测系统 - 闭环版</title>
+    <title>地推空间勘测系统 - 卫星勘测版</title>
     <style>
         :root { --primary: #2b6cb0; --bg: #f7fafc; --text: #2d3748; --border: #e2e8f0; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; color: var(--text); padding-bottom: 60px; }
@@ -23,7 +23,7 @@
         
         input[type="text"], input[type="number"] { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box; margin-bottom: 10px; font-size: 14px; }
         
-        .btn { padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; box-sizing: border-box; color: #fff; margin-bottom: 10px; }
+        .btn { padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; box-sizing: border-box; color: #fff; margin-bottom: 10px; display: inline-block; text-align: center; }
         .btn-primary { background: var(--primary); }
         .btn-success { background: #48bb78; }
         .btn-warning { background: #ed8936; }
@@ -36,19 +36,26 @@
         .unit-row input { margin-bottom: 0; }
         
         .code-box { width: 100%; height: 120px; font-family: monospace; font-size: 12px; border: 1px solid #ccc; border-radius: 6px; padding: 10px; box-sizing: border-box; }
-        #json-output { background: #f7fafc; } /* 导出框置灰 */
+        #json-output { background: #f7fafc; }
         
-        .tag { background: #ebf8ff; color: #3182ce; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 5px; }
         #map-container { width: 100%; height: 250px; border-radius: 8px; margin-bottom: 10px; display: none; border: 1px solid var(--border); overflow: hidden;}
+        
+        /* 独立模态框 (用于楼栋选点) */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 999; display: none; flex-direction: column; justify-content: center; padding: 15px; }
+        .modal-content { background: #fff; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+        .modal-header { padding: 15px; font-weight: bold; font-size: 16px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { height: 350px; position: relative; width: 100%; }
+        .modal-footer { padding: 15px; display: flex; gap: 10px; }
+        .coord-status { font-size: 12px; padding: 6px 10px; border-radius: 4px; display: inline-block; margin-bottom: 10px; width: 100%; box-sizing: border-box; }
+        .coord-missing { background: #fff5f5; color: #c53030; border: 1px solid #feb2b2; }
+        .coord-ok { background: #f0fff4; color: #276749; border: 1px solid #9ae6b4; }
     </style>
 
-    <!-- 【高德地图密钥与API加载】 -->
+    <!-- 高德地图API配置 -->
     <script type="text/javascript">
-        window._AMapSecurityConfig = {
-            securityJsCode: '35d17572e3aeec5bf42bfe5f4cec1b3c',
-        }
+        window._AMapSecurityConfig = { securityJsCode: '35d17572e3aeec5bf42bfe5f4cec1b3c' }
     </script>
-    <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=cb9a804d2aa1bc079283ada9d0f1ec3f&plugin=AMap.Geolocation"></script>
+    <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=cb9a804d2aa1bc079283ada9d0f1ec3f&plugin=AMap.Geolocation,AMap.MapType"></script>
 
 </head>
 <body>
@@ -71,7 +78,6 @@
             <div id="geo-status" style="font-size: 13px; color: #718096; margin-bottom: 10px; font-weight: bold;">未获取坐标</div>
             
             <div id="map-container"></div>
-            
             <input type="hidden" id="temp_lat"><input type="hidden" id="temp_lng">
             
             <input type="text" id="candidate_name" placeholder="2. 点位名称 (如: 南门丰巢柜旁)">
@@ -95,31 +101,46 @@
 
     <!-- Tab 3: 数据导入与导出 -->
     <div id="tab-2" class="tab-content">
-        
-        <!-- 导出区块 -->
         <div class="card">
             <h3>⬆️ 结算与导出</h3>
             <p id="summary-text" style="font-size: 14px; color: #4a5568;"></p>
             <textarea id="json-output" class="code-box" readonly placeholder="数据将在此生成..."></textarea>
             <button class="btn btn-success" style="margin-top: 15px;" onclick="copyJSON()">一键复制 JSON 给后端</button>
         </div>
-
-        <!-- 导入区块 -->
         <div class="card">
-            <h3>⬇️ 历史数据导入 (覆盖当前)</h3>
-            <textarea id="json-input" class="code-box" placeholder="粘贴之前的 JSON 代码到这里，以继续编辑..."></textarea>
-            <button class="btn btn-outline" style="margin-top: 15px; border-color: #ed8936; color: #ed8936;" onclick="importJSON()">读取并恢复数据</button>
+            <h3>⬇️ 历史数据导入</h3>
+            <textarea id="json-input" class="code-box" placeholder="粘贴之前的 JSON 代码到这里..."></textarea>
+            <button class="btn btn-outline" style="margin-top: 15px;" onclick="importJSON()">读取并恢复数据</button>
         </div>
-
         <button class="btn btn-danger" style="margin-top: 20px; width:100%; padding: 12px; font-size:14px;" onclick="clearAllData()">⚠️ 清空所有数据 (开始新小区)</button>
     </div>
 
-    <script>
-        // --- 全局数据 ---
-        let appData = { community_name: "", candidates: [], buildings: [] };
-        let map = null, marker = null;
+    <!-- 卫星图选点模态框 -->
+    <div class="modal-overlay" id="picker-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span id="picker-title">正在为 1栋 选址</span>
+                <span style="font-size: 20px; color: #a0aec0; cursor: pointer;" onclick="closePicker()">×</span>
+            </div>
+            <!-- 地图容器 -->
+            <div id="picker-map" class="modal-body"></div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" style="flex: 1; margin:0;" onclick="closePicker()">取消</button>
+                <button class="btn btn-primary" style="flex: 2; margin:0;" onclick="confirmPicker()">✅ 确认楼栋位置</button>
+            </div>
+        </div>
+    </div>
 
-        // 初始化加载
+    <script>
+        let appData = { community_name: "", candidates: [], buildings: [] };
+        
+        // 预选点地图全局变量
+        let map = null, marker = null;
+        
+        // 楼栋戳点地图全局变量
+        let pickerMap = null, pickerMarker = null;
+        let currentPickingBuildingIndex = -1; 
+
         window.onload = () => {
             const saved = localStorage.getItem('siteSurveyData');
             if(saved) {
@@ -128,7 +149,7 @@
                     document.getElementById('community_name').value = appData.community_name || "";
                     renderCandidates();
                     renderBuildings();
-                } catch(e) { console.error("缓存解析失败", e); }
+                } catch(e) {}
             }
         };
 
@@ -144,107 +165,55 @@
             if(index === 2) updateSummary();
         }
 
-        // --- 模块：导入功能 (核心新增) ---
         function importJSON() {
             const jsonStr = document.getElementById('json-input').value.trim();
-            if (!jsonStr) return alert("请先在框内粘贴 JSON 数据！");
-
+            if (!jsonStr) return alert("请先粘贴数据！");
             try {
                 const parsed = JSON.parse(jsonStr);
-                
-                // 基础校验格式
-                if (!parsed.hasOwnProperty('community_name') && !parsed.hasOwnProperty('buildings')) {
-                    throw new Error("识别不到有效的小区字段");
-                }
-
-                if (confirm("🚨 警告：导入数据将完全覆盖你当前正在编辑的内容！确定继续吗？")) {
-                    appData = {
-                        community_name: parsed.community_name || "",
-                        candidates: parsed.candidates || [],
-                        buildings: parsed.buildings || []
-                    };
-                    
-                    // 恢复UI状态
+                if (confirm("🚨 警告：导入数据将完全覆盖你当前内容！继续？")) {
+                    appData = { community_name: parsed.community_name||"", candidates: parsed.candidates||[], buildings: parsed.buildings||[] };
                     document.getElementById('community_name').value = appData.community_name;
-                    saveData();
-                    renderCandidates();
-                    renderBuildings();
-                    document.getElementById('json-input').value = ""; // 清空输入框
-                    
-                    alert("✅ 数据加载成功！已恢复历史状态。");
-                    switchTab(1); // 跳转到楼栋页让用户确认
+                    saveData(); renderCandidates(); renderBuildings();
+                    document.getElementById('json-input').value = "";
+                    alert("✅ 数据加载成功！"); switchTab(1);
                 }
-            } catch (e) {
-                alert("❌ JSON 格式错误或数据损坏，解析失败：\n" + e.message);
-            }
+            } catch (e) { alert("❌ JSON 解析失败！"); }
         }
 
-        // --- 模块 1：高德地图核心交互逻辑 ---
+        // --- 预选点打点逻辑 (维持原样) ---
         function getAMapLocation() {
             const status = document.getElementById('geo-status');
-            const btn = document.getElementById('geo-btn');
-            status.innerText = "⏳ 正在请求高德高精度定位...";
-            
-            const geolocation = new AMap.Geolocation({
-                enableHighAccuracy: true, timeout: 8000, maximumAge: 0, showMarker: false, showCircle: false
-            });
-
-            geolocation.getCurrentPosition(function(locStatus, result) {
+            status.innerText = "⏳ 定位中...";
+            new AMap.Geolocation({ enableHighAccuracy: true, timeout: 8000 }).getCurrentPosition(function(locStatus, result) {
                 if(locStatus === 'complete') {
-                    const lng = result.position.lng;
-                    const lat = result.position.lat;
-                    document.getElementById('temp_lng').value = lng;
-                    document.getElementById('temp_lat').value = lat;
-                    status.innerHTML = `<span style="color:#48bb78">✅ 定位成功！若有偏差，请拖动下方地图大头针微调 👇</span>`;
+                    const lng = result.position.lng, lat = result.position.lat;
+                    document.getElementById('temp_lng').value = lng; document.getElementById('temp_lat').value = lat;
+                    status.innerHTML = `<span style="color:#48bb78">✅ 定位成功！可拖动下方大头针微调</span>`;
                     showMapAndMarker(lng, lat);
-                } else {
-                    status.innerHTML = `<span style="color:#f56565">❌ 定位失败: ${result.message}</span>`;
-                }
+                } else { status.innerHTML = `<span style="color:#f56565">❌ 定位失败: ${result.message}</span>`; }
             });
         }
 
         function showMapAndMarker(lng, lat) {
             const mapDiv = document.getElementById('map-container');
             mapDiv.style.display = 'block';
-
             if (!map) {
-                map = new AMap.Map('map-container', { zoom: 18, center: [lng, lat], dragEnable: true, zoomEnable: true });
-                marker = new AMap.Marker({ position: [lng, lat], draggable: true, cursor: 'move', animation: 'AMAP_ANIMATION_DROP' });
+                map = new AMap.Map('map-container', { zoom: 18, center: [lng, lat] });
+                marker = new AMap.Marker({ position: [lng, lat], draggable: true, animation: 'AMAP_ANIMATION_DROP' });
                 map.add(marker);
-
                 marker.on('dragend', function(e) {
-                    const newLng = e.lnglat.lng;
-                    const newLat = e.lnglat.lat;
-                    document.getElementById('temp_lng').value = newLng;
-                    document.getElementById('temp_lat').value = newLat;
-                    document.getElementById('geo-status').innerHTML = `<span style="color:#ed8936">📍 坐标已人工微调 (经度:${newLng.toFixed(5)}, 纬度:${newLat.toFixed(5)})</span>`;
+                    document.getElementById('temp_lng').value = e.lnglat.lng; document.getElementById('temp_lat').value = e.lnglat.lat;
                 });
-            } else {
-                map.setCenter([lng, lat]);
-                marker.setPosition([lng, lat]);
-            }
+            } else { map.setCenter([lng, lat]); marker.setPosition([lng, lat]); }
         }
 
         function addCandidate() {
-            const name = document.getElementById('candidate_name').value;
-            const lat = document.getElementById('temp_lat').value;
-            const lng = document.getElementById('temp_lng').value;
-            
-            if(!name || !lat) return alert("必须先获取定位，并填写点位名称！");
-
-            appData.candidates.push({
-                candidate_id: 'c_' + Date.now(), name: name, lat: parseFloat(lat), lng: parseFloat(lng),
-                conditions: { has_power: document.getElementById('cond_power').checked, good_property: document.getElementById('cond_prop').checked }
-            });
-
-            document.getElementById('candidate_name').value = '';
-            document.getElementById('temp_lat').value = '';
-            document.getElementById('temp_lng').value = '';
-            document.getElementById('geo-status').innerText = '未获取坐标';
-            document.getElementById('map-container').style.display = 'none'; 
-            document.getElementById('cond_power').checked = false;
-            document.getElementById('cond_prop').checked = false;
-
+            const name = document.getElementById('candidate_name').value, lat = document.getElementById('temp_lat').value, lng = document.getElementById('temp_lng').value;
+            if(!name || !lat) return alert("请先获取定位并填写名称！");
+            appData.candidates.push({ candidate_id: 'c_' + Date.now(), name: name, lat: parseFloat(lat), lng: parseFloat(lng), conditions: { has_power: document.getElementById('cond_power').checked, good_property: document.getElementById('cond_prop').checked } });
+            document.getElementById('candidate_name').value = ''; document.getElementById('temp_lat').value = ''; document.getElementById('temp_lng').value = '';
+            document.getElementById('geo-status').innerText = '未获取坐标'; document.getElementById('map-container').style.display = 'none'; 
+            document.getElementById('cond_power').checked = false; document.getElementById('cond_prop').checked = false;
             saveData(); renderCandidates();
         }
 
@@ -257,33 +226,53 @@
                 </div>
             `).join('');
         }
-        function deleteCandidate(index) { if(confirm("确定删除该点位？")) { appData.candidates.splice(index, 1); saveData(); renderCandidates(); } }
+        function deleteCandidate(index) { if(confirm("删除该点位？")) { appData.candidates.splice(index, 1); saveData(); renderCandidates(); } }
 
-        // --- 模块 2 & 3：楼栋录入与结算导出 ---
-        function addBuilding(defaultName = "", defaultUnits = [{name:"1单元", households: ""}, {name:"2单元", households: ""}]) {
+        // --- 核心：楼栋录入与卫星图选点 ---
+        function addBuilding(defaultName = "", defaultUnits = [{name:"1单元", households: ""}], defaultLat = null, defaultLng = null) {
             let nextName = defaultName;
             if(!nextName) {
                 const len = appData.buildings.length;
                 nextName = len === 0 ? "1栋" : (parseInt(appData.buildings[len-1].building_name) + 1 || len + 1) + "栋";
             }
-            appData.buildings.push({ building_id: 'b_' + Date.now(), building_name: nextName, units: JSON.parse(JSON.stringify(defaultUnits)) });
+            appData.buildings.push({ 
+                building_id: 'b_' + Date.now(), 
+                building_name: nextName, 
+                lat: defaultLat,   // 新增经纬度字段
+                lng: defaultLng,
+                units: JSON.parse(JSON.stringify(defaultUnits)) 
+            });
             saveData(); renderBuildings();
         }
 
         function cloneLastBuilding() {
-            if(appData.buildings.length === 0) return alert("没有可以复制的楼栋！");
+            if(appData.buildings.length === 0) return alert("没有可复制的楼栋！");
             const last = appData.buildings[appData.buildings.length - 1];
             let newName = last.building_name.replace(/\d+/, match => parseInt(match) + 1);
-            addBuilding(newName, last.units);
+            // 复制时，刻意不传 lat 和 lng，让它们保持 null，强制业务员重新选点
+            addBuilding(newName, last.units, null, null);
         }
 
         function renderBuildings() {
-            document.getElementById('buildings-list').innerHTML = appData.buildings.map((b, bIndex) => `
+            document.getElementById('buildings-list').innerHTML = appData.buildings.map((b, bIndex) => {
+                // 判断是否已标记坐标
+                const hasCoord = b.lat && b.lng;
+                const coordHtml = hasCoord 
+                    ? `<div class="coord-status coord-ok">✅ 已标记: ${b.lng.toFixed(4)}, ${b.lat.toFixed(4)}</div>` 
+                    : `<div class="coord-status coord-missing">⚠️ 未标记地图位置 (后端将无法计算打分)</div>`;
+
+                return `
                 <div class="card" style="border: 1px solid #cbd5e0;">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
                         <input type="text" value="${b.building_name}" onchange="updateBName(${bIndex}, this.value)" style="width:120px; margin:0; font-weight:bold;">
-                        <button class="btn-danger" onclick="deleteBuilding(${bIndex})">删除此栋</button>
+                        <button class="btn-danger" onclick="deleteBuilding(${bIndex})">删除</button>
                     </div>
+                    
+                    ${coordHtml}
+                    <button class="btn btn-outline" style="padding:8px; font-size:13px; margin-bottom:15px; border-style:dashed;" onclick="openPicker(${bIndex})">
+                        📍 戳地图标记此楼位置
+                    </button>
+
                     <div id="units-box-${bIndex}">
                         ${b.units.map((u, uIndex) => `
                             <div class="unit-row">
@@ -293,11 +282,79 @@
                             </div>
                         `).join('')}
                     </div>
-                    <button class="btn btn-outline" style="padding:6px; font-size:13px;" onclick="addUnit(${bIndex})">+ 添加单元</button>
+                    <button class="btn btn-outline" style="padding:6px; font-size:13px; border:none; background:#edf2f7; color:#4a5568;" onclick="addUnit(${bIndex})">+ 添加单元</button>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
+        // --- 模态框卫星地图戳点逻辑 ---
+        function openPicker(bIndex) {
+            currentPickingBuildingIndex = bIndex;
+            const b = appData.buildings[bIndex];
+            document.getElementById('picker-title').innerText = `正在标记: ${b.building_name}`;
+            document.getElementById('picker-modal').style.display = 'flex';
+
+            // 获取默认中心点 (如果这栋楼已有坐标就用它的，否则尝试用预选点的坐标，否则用粗略定位)
+            let centerLng = 116.397428, centerLat = 39.90923; // 兜底默认北京天安门
+            let needLocate = true;
+
+            if (b.lat && b.lng) {
+                centerLng = b.lng; centerLat = b.lat; needLocate = false;
+            } else if (appData.candidates.length > 0) {
+                centerLng = appData.candidates[0].lng; centerLat = appData.candidates[0].lat; needLocate = false;
+            }
+
+            initPickerMap(centerLng, centerLat);
+
+            // 如果都没有位置记录，调用一次粗略定位拉倒附近
+            if(needLocate) {
+                new AMap.Geolocation({timeout: 3000}).getCurrentPosition(function(status, result) {
+                    if(status === 'complete') {
+                        pickerMap.setCenter([result.position.lng, result.position.lat]);
+                        pickerMarker.setPosition([result.position.lng, result.position.lat]);
+                    }
+                });
+            }
+        }
+
+        function initPickerMap(lng, lat) {
+            if (!pickerMap) {
+                // 初始化地图并加载【卫星图层】
+                pickerMap = new AMap.Map('picker-map', { 
+                    zoom: 18, 
+                    center: [lng, lat],
+                    layers: [new AMap.TileLayer.Satellite()] // ✨ 核心：开启卫星俯视图
+                });
+                
+                pickerMarker = new AMap.Marker({ position: [lng, lat], draggable: false });
+                pickerMap.add(pickerMarker);
+
+                // 绑定点击事件，点击哪里，大头针就去哪里
+                pickerMap.on('click', function(e) {
+                    pickerMarker.setPosition([e.lnglat.lng, e.lnglat.lat]);
+                });
+            } else {
+                pickerMap.setCenter([lng, lat]);
+                pickerMarker.setPosition([lng, lat]);
+            }
+        }
+
+        function closePicker() {
+            document.getElementById('picker-modal').style.display = 'none';
+        }
+
+        function confirmPicker() {
+            if (currentPickingBuildingIndex > -1 && pickerMarker) {
+                const pos = pickerMarker.getPosition();
+                appData.buildings[currentPickingBuildingIndex].lng = pos.lng;
+                appData.buildings[currentPickingBuildingIndex].lat = pos.lat;
+                saveData();
+                renderBuildings(); // 刷新卡片 UI，显示绿色已打卡
+                closePicker();
+            }
+        }
+
+        // 数据更新基础函数
         function updateBName(bIndex, val) { appData.buildings[bIndex].building_name = val; saveData(); }
         function updateUnit(bIndex, uIndex, key, val) { appData.buildings[bIndex].units[uIndex][key] = key === 'households' ? parseInt(val) || 0 : val; saveData(); }
         function addUnit(bIndex) { appData.buildings[bIndex].units.push({name: (appData.buildings[bIndex].units.length+1)+"单元", households: ""}); saveData(); renderBuildings(); }
@@ -307,27 +364,42 @@
         function updateSummary() {
             const outJSON = JSON.parse(JSON.stringify(appData));
             let totalHh = 0;
+            let missingCoordCount = 0;
+            
             outJSON.buildings.forEach(b => {
                 b.total_households = b.units.reduce((sum, u) => sum + (parseInt(u.households) || 0), 0);
                 totalHh += b.total_households;
+                if(!b.lat || !b.lng) missingCoordCount++;
             });
-            document.getElementById('summary-text').innerHTML = `小区：<b>${outJSON.community_name || '未命名'}</b> <br>预选点：<b>${outJSON.candidates.length}</b> 个 <br>楼栋：<b>${outJSON.buildings.length}</b> 栋 <br>总户数：<b>${totalHh}</b> 户`;
+
+            document.getElementById('summary-text').innerHTML = `
+                小区：<b>${outJSON.community_name || '未命名'}</b> <br>
+                预选点：<b>${outJSON.candidates.length}</b> 个 <br>
+                楼栋：<b>${outJSON.buildings.length}</b> 栋 <span style="color:#e53e3e">(${missingCoordCount} 栋未标坐标)</span><br>
+                总户数：<b>${totalHh}</b> 户
+            `;
             document.getElementById('json-output').value = JSON.stringify(outJSON, null, 2);
         }
 
         function copyJSON() {
-            if(!appData.community_name) return alert("请先填写小区名称！");
             updateSummary();
+            // 简单拦截校验
+            const missing = appData.buildings.filter(b => !b.lat || !b.lng);
+            if(missing.length > 0) {
+                if(!confirm(`⚠️ 警告：还有 ${missing.length} 栋楼没有标记地图坐标！后端无法为其计算距离。确定要强行复制吗？`)) {
+                    return;
+                }
+            }
+            
             const copyText = document.getElementById("json-output");
             copyText.select();
             document.execCommand("copy");
-            alert("复制成功！请发送给后端。");
+            alert("✅ 复制成功！");
         }
 
         function clearAllData() {
             if(prompt("此操作不可逆！如果确认已交接数据，请输入大写字母 'Y' 清空：") === 'Y') {
-                localStorage.removeItem('siteSurveyData');
-                location.reload();
+                localStorage.removeItem('siteSurveyData'); location.reload();
             }
         }
     </script>
