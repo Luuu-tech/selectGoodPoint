@@ -3,222 +3,303 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>选址勘测 - 动态楼栋版</title>
+    <title>地推空间勘测系统</title>
     <style>
-        body { font-family: -apple-system, sans-serif; background: #f0f2f5; padding: 10px; margin: 0; color: #333; }
-        .card { background: #fff; border-radius: 10px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 12px; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 10px; }
-        h3 { margin: 0; font-size: 16px; color: #2c3e50; }
-        input[type="text"], input[type="number"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px; margin-top: 5px; }
+        :root { --primary: #2b6cb0; --bg: #f7fafc; --text: #2d3748; --border: #e2e8f0; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; color: var(--text); padding-bottom: 60px; }
         
-        /* 楼栋卡片样式 */
-        .building-card { border: 1px solid #4a90e2; border-radius: 8px; padding: 10px; margin-bottom: 15px; background: #fafbfc; }
-        .building-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        /* 顶部小区名称 */
+        .header-bar { background: #fff; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 100; }
+        .header-bar input { width: 100%; padding: 12px; font-size: 16px; border: 1px solid var(--primary); border-radius: 8px; box-sizing: border-box; font-weight: bold; }
         
-        /* 单元行样式 */
+        /* Tab 导航 */
+        .tabs { display: flex; background: #fff; border-bottom: 1px solid var(--border); }
+        .tab { flex: 1; text-align: center; padding: 15px 0; font-size: 15px; font-weight: bold; color: #718096; border-bottom: 3px solid transparent; cursor: pointer; transition: 0.3s; }
+        .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+        
+        /* 页面内容区 */
+        .tab-content { display: none; padding: 15px; }
+        .tab-content.active { display: block; }
+        
+        .card { background: #fff; border-radius: 10px; padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        .card h3 { margin: 0 0 10px 0; font-size: 16px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+        
+        input[type="text"], input[type="number"] { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box; margin-bottom: 10px; font-size: 14px; }
+        
+        .btn { padding: 12px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; width: 100%; box-sizing: border-box; color: #fff; margin-bottom: 10px; }
+        .btn-primary { background: var(--primary); }
+        .btn-success { background: #48bb78; }
+        .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+        .btn-danger { background: #f56565; color: white; padding: 6px 12px; font-size: 12px; width: auto; }
+        
+        /* 列表项样式 */
+        .list-item { border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-bottom: 10px; background: #fbfbfc; position: relative; }
+        .delete-btn { position: absolute; right: 10px; top: 10px; }
+        
+        /* 楼栋特有样式 */
         .unit-row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
-        .unit-row input { margin-top: 0; }
+        .unit-row input { margin-bottom: 0; }
         
-        .btn { padding: 12px; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; text-align: center; width: 100%; box-sizing: border-box;}
-        .btn-primary { background: #4a90e2; color: white; }
-        .btn-success { background: #2ecc71; color: white; }
-        .btn-sm { padding: 6px 10px; font-size: 13px; width: auto; background: #e0e0e0; color: #333; }
-        .btn-danger { background: #ff4757; color: white; }
-        
-        #json-output { width: 100%; height: 120px; margin-top: 10px; font-family: monospace; font-size: 12px; border-radius: 6px; border: 1px solid #ccc; padding: 8px; box-sizing: border-box; }
-        .help-text { font-size: 12px; color: #888; margin-bottom: 10px; display: block; }
+        #json-output { width: 100%; height: 200px; font-family: monospace; font-size: 12px; border: 1px solid #ccc; border-radius: 6px; padding: 10px; box-sizing: border-box; }
+        .tag { background: #ebf8ff; color: #3182ce; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 5px; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <div class="header">
-            <h3>📍 第一步：小区定位</h3>
-        </div>
-        <button class="btn btn-primary" onclick="getLocation()" id="geo-btn">点击获取当前 GPS</button>
-        <div style="font-size: 12px; color: #666; margin-top: 8px;" id="location-display">未定位 (需在 HTTPS 或云端环境中)</div>
-        <input type="hidden" id="lat"><input type="hidden" id="lng">
-        <input type="text" id="community-name" placeholder="请输入小区名称 (如: 幸福小区)">
+    <div class="header-bar">
+        <input type="text" id="community_name" placeholder="🏢 请输入小区名称 (必填)" onchange="saveData()">
     </div>
 
-    <div class="card">
-        <div class="header">
-            <h3>🏢 第二步：录入楼栋与单元</h3>
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab(0)">📍 预选点位</div>
+        <div class="tab" onclick="switchTab(1)">🏘️ 楼栋录入</div>
+        <div class="tab" onclick="switchTab(2)">📦 结算导出</div>
+    </div>
+
+    <!-- Tab 1: 预选点位 (需要定位) -->
+    <div id="tab-0" class="tab-content active">
+        <div class="card">
+            <h3>新增预选打分点</h3>
+            <button class="btn btn-outline" onclick="getLocation()" id="geo-btn">1. 点击获取当前坐标</button>
+            <div id="geo-status" style="font-size: 12px; color: #718096; margin-bottom: 10px;">未获取坐标</div>
+            <input type="hidden" id="temp_lat"><input type="hidden" id="temp_lng">
+            
+            <input type="text" id="candidate_name" placeholder="2. 点位名称 (如: 南门丰巢柜旁)">
+            <div style="margin-bottom: 10px; font-size: 14px;">
+                <label><input type="checkbox" id="cond_power"> 具备接电条件</label> &nbsp;&nbsp;
+                <label><input type="checkbox" id="cond_prop"> 物业允入</label>
+            </div>
+            <button class="btn btn-primary" onclick="addCandidate()">➕ 保存该点位</button>
         </div>
-        <span class="help-text">提示：结构相同的楼栋，可以点击“复制上一栋”快速生成。</span>
         
-        <div id="buildings-container">
-            <!-- 动态生成的楼栋将插入这里 -->
-        </div>
-
-        <div style="display: flex; gap: 10px;">
-            <button class="btn btn-sm" style="flex: 1;" onclick="addBuilding()">+ 新增楼栋</button>
-            <button class="btn btn-sm" style="flex: 1; background: #f39c12; color: white;" onclick="cloneLastBuilding()">📋 复制上一栋</button>
-        </div>
+        <div id="candidates-list"></div>
     </div>
 
-    <div class="card">
-        <button class="btn btn-success" onclick="generateJSON()">✅ 结算生成数据</button>
-        <textarea id="json-output" placeholder="结算后的数据会显示在这里..."></textarea>
-        <button class="btn btn-primary" style="margin-top: 10px;" onclick="copyData()">一键复制数据</button>
+    <!-- Tab 2: 楼栋录入 (无需定位，纯填表) -->
+    <div id="tab-1" class="tab-content">
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <button class="btn btn-primary" style="flex: 1;" onclick="addBuilding()">➕ 新增一栋</button>
+            <button class="btn btn-outline" style="flex: 1; background:#ed8936; color:#fff; border:none;" onclick="cloneLastBuilding()">📋 复制上一栋</button>
+        </div>
+        <div id="buildings-list"></div>
+    </div>
+
+    <!-- Tab 3: 数据结算与导出 -->
+    <div id="tab-2" class="tab-content">
+        <div class="card">
+            <h3>数据校验与导出</h3>
+            <p id="summary-text" style="font-size: 14px; color: #4a5568;"></p>
+            <textarea id="json-output" readonly placeholder="数据将在此生成..."></textarea>
+            <button class="btn btn-success" style="margin-top: 15px;" onclick="copyJSON()">一键复制 JSON 发给后端</button>
+            <button class="btn btn-outline" style="margin-top: 10px; border-color: #f56565; color: #f56565;" onclick="clearAllData()">⚠️ 清空当前小区数据 (开启下一个)</button>
+        </div>
     </div>
 
     <script>
-        let buildingCount = 0;
+        // --- 全局状态与持久化 (PM强烈要求的功能) ---
+        let appData = {
+            community_name: "",
+            candidates: [],
+            buildings: []
+        };
 
-        // 初始化加载一个默认楼栋
-        window.onload = function() { addBuilding(); };
+        // 页面加载时恢复数据
+        window.onload = () => {
+            const saved = localStorage.getItem('siteSurveyData');
+            if(saved) {
+                appData = JSON.parse(saved);
+                document.getElementById('community_name').value = appData.community_name;
+                renderCandidates();
+                renderBuildings();
+            }
+        };
 
-        // 1. 定位功能
+        // 保存数据到本地缓存
+        function saveData() {
+            appData.community_name = document.getElementById('community_name').value.trim();
+            localStorage.setItem('siteSurveyData', JSON.stringify(appData));
+            updateSummary();
+        }
+
+        // --- UI 交互逻辑 ---
+        function switchTab(index) {
+            document.querySelectorAll('.tab').forEach((t, i) => {
+                t.className = i === index ? 'tab active' : 'tab';
+            });
+            document.querySelectorAll('.tab-content').forEach((c, i) => {
+                c.className = i === index ? 'tab-content active' : 'tab-content';
+            });
+            if(index === 2) updateSummary();
+        }
+
+        // --- 模块 1：预选点位逻辑 ---
         function getLocation() {
-            const display = document.getElementById("location-display");
-            display.innerText = "定位中...";
+            const status = document.getElementById('geo-status');
+            const btn = document.getElementById('geo-btn');
+            status.innerText = "正在呼叫卫星定位...";
+            
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        document.getElementById('lat').value = position.coords.latitude;
-                        document.getElementById('lng').value = position.coords.longitude;
-                        display.innerText = `✅ 经度: ${position.coords.longitude.toFixed(5)}, 纬度: ${position.coords.latitude.toFixed(5)}`;
-                        document.getElementById('geo-btn').style.background = "#2ecc71";
+                    (pos) => {
+                        document.getElementById('temp_lat').value = pos.coords.latitude;
+                        document.getElementById('temp_lng').value = pos.coords.longitude;
+                        status.innerHTML = `<span style="color:#48bb78">✅ 定位成功 (精度: ${Math.floor(pos.coords.accuracy)}米)</span>`;
+                        btn.style.borderColor = "#48bb78"; btn.style.color = "#48bb78";
                     },
-                    (error) => { 
-                        alert("定位失败！请确认：\n1. 手机开启了定位服务\n2. 网页是通过 HTTPS 协议访问的");
-                        display.innerText = "❌ 定位失败"; 
-                    },
+                    (err) => { status.innerHTML = `<span style="color:#f56565">❌ 定位失败，请检查定位权限。</span>`; },
                     { enableHighAccuracy: true, timeout: 5000 }
                 );
-            } else {
-                display.innerText = "浏览器不支持定位。";
             }
         }
 
-        // 2. 添加楼栋
-        function addBuilding(defaultData = null) {
-            buildingCount++;
-            const bId = `building-${buildingCount}`;
-            const container = document.getElementById('buildings-container');
+        function addCandidate() {
+            const name = document.getElementById('candidate_name').value;
+            const lat = document.getElementById('temp_lat').value;
+            const lng = document.getElementById('temp_lng').value;
             
-            const div = document.createElement('div');
-            div.className = 'building-card';
-            div.id = bId;
-            
-            let bName = defaultData ? defaultData.name : `${buildingCount}栋`;
-            
-            div.innerHTML = `
-                <div class="building-header">
-                    <input type="text" class="b-name" value="${bName}" placeholder="楼号" style="width: 80px;">
-                    <button class="btn btn-sm btn-danger" onclick="removeEl('${bId}')">删除该栋</button>
-                </div>
-                <div class="units-container" id="units-${bId}">
-                    <!-- 单元区 -->
-                </div>
-                <button class="btn btn-sm" onclick="addUnit('${bId}')" style="margin-top: 5px;">+ 添加单元</button>
-            `;
-            container.appendChild(div);
+            if(!name || !lat) return alert("必须先获取定位，并填写点位名称！");
 
-            // 渲染单元
-            if (defaultData && defaultData.units) {
-                defaultData.units.forEach(u => addUnit(bId, u.name, u.households));
-            } else {
-                addUnit(bId, '1单元', ''); // 默认给1个单元
-            }
-        }
-
-        // 3. 添加单元
-        function addUnit(buildingId, uName = '', uHouseholds = '') {
-            const container = document.getElementById(`units-${buildingId}`);
-            const unitCount = container.children.length + 1;
-            const unitName = uName || `${unitCount}单元`;
-            
-            const unitDiv = document.createElement('div');
-            unitDiv.className = 'unit-row';
-            unitDiv.innerHTML = `
-                <input type="text" class="u-name" value="${unitName}" placeholder="名称" style="flex: 1;">
-                <input type="number" class="u-hh" value="${uHouseholds}" placeholder="户数" style="flex: 1;">
-                <button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">X</button>
-            `;
-            container.appendChild(unitDiv);
-        }
-
-        // 4. 复制上一栋 (核心提效功能)
-        function cloneLastBuilding() {
-            const container = document.getElementById('buildings-container');
-            if (container.children.length === 0) return alert("没有可以复制的楼栋！");
-            
-            const lastBuilding = container.lastElementChild;
-            const bNameInput = lastBuilding.querySelector('.b-name').value;
-            
-            // 尝试智能推算下一栋楼号 (如: 1栋 -> 2栋)
-            let newName = bNameInput.replace(/\d+/, match => parseInt(match) + 1);
-            
-            const unitRows = lastBuilding.querySelectorAll('.unit-row');
-            let clonedUnits = [];
-            unitRows.forEach(row => {
-                clonedUnits.push({
-                    name: row.querySelector('.u-name').value,
-                    households: row.querySelector('.u-hh').value
-                });
-            });
-
-            addBuilding({ name: newName, units: clonedUnits });
-        }
-
-        // 通用删除
-        function removeEl(id) { document.getElementById(id).remove(); }
-
-        // 5. 遍历并生成结构化 JSON
-        function generateJSON() {
-            const community = document.getElementById('community-name').value;
-            const lat = document.getElementById('lat').value;
-            const lng = document.getElementById('lng').value;
-            
-            if(!community || !lat) {
-                alert("请先获取定位并填写小区名称！");
-                return;
-            }
-
-            const data = {
-                type: "community",
-                community_name: community,
+            appData.candidates.push({
+                candidate_id: 'c_' + Date.now(),
+                name: name,
                 lat: parseFloat(lat),
                 lng: parseFloat(lng),
-                timestamp: new Date().toISOString(),
-                total_community_households: 0,
-                buildings: []
-            };
-
-            const buildingCards = document.querySelectorAll('.building-card');
-            buildingCards.forEach(card => {
-                const bName = card.querySelector('.b-name').value;
-                let bTotalHh = 0;
-                let units = [];
-                
-                const unitRows = card.querySelectorAll('.unit-row');
-                unitRows.forEach(row => {
-                    const uName = row.querySelector('.u-name').value;
-                    const hh = parseInt(row.querySelector('.u-hh').value) || 0;
-                    units.push({ unit_name: uName, households: hh });
-                    bTotalHh += hh;
-                });
-
-                data.buildings.push({
-                    building_name: bName,
-                    building_total_households: bTotalHh,
-                    units: units
-                });
-                data.total_community_households += bTotalHh;
+                conditions: {
+                    has_power: document.getElementById('cond_power').checked,
+                    good_property: document.getElementById('cond_prop').checked
+                }
             });
 
-            document.getElementById('json-output').value = JSON.stringify(data, null, 2);
-            alert(`结算成功！该小区共计 ${data.total_community_households} 户。`);
+            // 清空表单
+            document.getElementById('candidate_name').value = '';
+            document.getElementById('temp_lat').value = '';
+            document.getElementById('temp_lng').value = '';
+            document.getElementById('geo-status').innerText = '未获取坐标';
+            document.getElementById('geo-btn').style = "";
+            document.getElementById('cond_power').checked = false;
+            document.getElementById('cond_prop').checked = false;
+
+            saveData();
+            renderCandidates();
         }
 
-        function copyData() {
+        function renderCandidates() {
+            const box = document.getElementById('candidates-list');
+            box.innerHTML = appData.candidates.map((c, index) => `
+                <div class="list-item">
+                    <button class="btn-danger delete-btn" onclick="deleteCandidate(${index})">删除</button>
+                    <div style="font-weight:bold;">📍 ${c.name}</div>
+                    <div style="font-size:12px; color:#718096; margin-top:5px;">
+                        经度: ${c.lng.toFixed(5)} | 纬度: ${c.lat.toFixed(5)}
+                    </div>
+                    <div style="margin-top:5px;">
+                        ${c.conditions.has_power ? '<span class="tag">⚡ 有电</span>' : ''}
+                        ${c.conditions.good_property ? '<span class="tag">🤝 物业允入</span>' : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function deleteCandidate(index) {
+            if(confirm("确定删除该点位？")) { appData.candidates.splice(index, 1); saveData(); renderCandidates(); }
+        }
+
+        // --- 模块 2：楼栋录入逻辑 ---
+        function addBuilding(defaultName = "", defaultUnits = [{name:"1单元", households: ""}, {name:"2单元", households: ""}]) {
+            let nextName = defaultName;
+            if(!nextName) {
+                // 智能推算默认楼号
+                const len = appData.buildings.length;
+                nextName = len === 0 ? "1栋" : (parseInt(appData.buildings[len-1].building_name) + 1 || len + 1) + "栋";
+            }
+
+            appData.buildings.push({
+                building_id: 'b_' + Date.now(),
+                building_name: nextName,
+                units: JSON.parse(JSON.stringify(defaultUnits)) // 深拷贝
+            });
+            saveData();
+            renderBuildings();
+        }
+
+        function cloneLastBuilding() {
+            if(appData.buildings.length === 0) return alert("没有可以复制的楼栋！");
+            const last = appData.buildings[appData.buildings.length - 1];
+            
+            // 智能推算名称： 1栋 -> 2栋
+            let newName = last.building_name.replace(/\d+/, match => parseInt(match) + 1);
+            addBuilding(newName, last.units);
+        }
+
+        function renderBuildings() {
+            const box = document.getElementById('buildings-list');
+            box.innerHTML = appData.buildings.map((b, bIndex) => `
+                <div class="card" style="border: 1px solid #cbd5e0;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                        <input type="text" value="${b.building_name}" onchange="updateBName(${bIndex}, this.value)" style="width:120px; margin:0; font-weight:bold;">
+                        <button class="btn-danger" onclick="deleteBuilding(${bIndex})">删除此栋</button>
+                    </div>
+                    <div id="units-box-${bIndex}">
+                        ${b.units.map((u, uIndex) => `
+                            <div class="unit-row">
+                                <input type="text" value="${u.name}" placeholder="单元名" onchange="updateUnit(${bIndex}, ${uIndex}, 'name', this.value)" style="flex:1;">
+                                <input type="number" value="${u.households}" placeholder="户数" onchange="updateUnit(${bIndex}, ${uIndex}, 'households', this.value)" style="flex:1;">
+                                <button class="btn-danger" onclick="deleteUnit(${bIndex}, ${uIndex})">X</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button class="btn btn-outline" style="padding:6px; font-size:13px;" onclick="addUnit(${bIndex})">+ 添加单元</button>
+                </div>
+            `).join('');
+        }
+
+        function updateBName(bIndex, val) { appData.buildings[bIndex].building_name = val; saveData(); }
+        function updateUnit(bIndex, uIndex, key, val) { 
+            appData.buildings[bIndex].units[uIndex][key] = key === 'households' ? parseInt(val) || 0 : val;
+            saveData(); 
+        }
+        function addUnit(bIndex) {
+            const uCount = appData.buildings[bIndex].units.length + 1;
+            appData.buildings[bIndex].units.push({name: uCount+"单元", households: ""});
+            saveData(); renderBuildings();
+        }
+        function deleteUnit(bIndex, uIndex) { appData.buildings[bIndex].units.splice(uIndex, 1); saveData(); renderBuildings(); }
+        function deleteBuilding(bIndex) { if(confirm("确定删除整栋楼？")) { appData.buildings.splice(bIndex, 1); saveData(); renderBuildings(); } }
+
+        // --- 模块 3：导出与结算 ---
+        function updateSummary() {
+            const outJSON = JSON.parse(JSON.stringify(appData));
+            let totalHh = 0;
+            
+            // 结算总户数
+            outJSON.buildings.forEach(b => {
+                b.total_households = b.units.reduce((sum, u) => sum + (parseInt(u.households) || 0), 0);
+                totalHh += b.total_households;
+            });
+
+            document.getElementById('summary-text').innerHTML = `
+                小区：<b>${outJSON.community_name || '未命名'}</b> <br>
+                已定预选点：<b>${outJSON.candidates.length}</b> 个 <br>
+                已录入楼栋：<b>${outJSON.buildings.length}</b> 栋 <br>
+                核算总户数：<b>${totalHh}</b> 户
+            `;
+            document.getElementById('json-output').value = JSON.stringify(outJSON, null, 2);
+        }
+
+        function copyJSON() {
+            if(!appData.community_name) return alert("请先填写小区名称！");
+            updateSummary();
             const copyText = document.getElementById("json-output");
-            if(!copyText.value) return alert("请先点击结算生成数据！");
             copyText.select();
             document.execCommand("copy");
-            alert("数据已复制，可发给后端或填入表格！");
+            alert("复制成功！请粘贴发送给后端工程师。");
+        }
+
+        function clearAllData() {
+            if(prompt("此操作不可逆！如果确认已交接数据，请输入大写字母 'Y' 清空：") === 'Y') {
+                localStorage.removeItem('siteSurveyData');
+                location.reload();
+            }
         }
     </script>
 </body>
