@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>净水机活动利润核算 V7.0</title>
+    <style>
+        :root {
+            --primary: #1890ff;
+            --success: #52c41a;
+            --excel: #1f7244;
+            --danger: #ff4d4f;
+            --warning: #faad14;
+            --purple: #722ed1;
+            --bg: #f0f2f5;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 15px; flex-wrap: wrap; gap: 10px;
+        }
+        .header h1 { margin: 0; font-size: 24px; color: #001529; }
+        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        
+        button, .btn-like {
+            border: none; padding: 10px 16px; font-size: 14px; border-radius: 6px;
+            cursor: pointer; color: white; transition: all 0.2s; font-weight: bold;
+            display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+            text-decoration: none; box-sizing: border-box;
+        }
+        button:hover, .btn-like:hover { opacity: 0.85; transform: translateY(-1px); }
+        button:active, .btn-like:active { transform: translateY(0); }
+
+        .btn-add { background-color: var(--primary); }
+        .btn-copy { background-color: var(--success); }
+        .btn-export { background-color: var(--excel); }
+        .btn-import { background-color: var(--purple); position: relative; overflow: hidden; }
+        .btn-del { background-color: var(--danger); padding: 4px 8px; font-size: 12px; margin-left: auto; }
+        
+        #fileInput {
+            position: absolute; top: 0; right: 0; min-width: 100%; min-height: 100%;
+            font-size: 100px; text-align: right; opacity: 0; outline: none; background: white; cursor: inherit; display: block;
+        }
+
+        .project-board {
+            background: white; padding: 15px 20px; border-radius: 8px;
+            margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: flex; flex-direction: column; gap: 15px; border-left: 4px solid var(--primary);
+        }
+        .board-row { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .board-row label { font-weight: bold; font-size: 15px; color: #333; white-space: nowrap; width: 120px;}
+        .board-row input {
+            flex: 1; min-width: 200px; padding: 8px 12px; font-size: 15px;
+            border: 1px solid #d9d9d9; border-radius: 6px; outline: none;
+        }
+        .board-row input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(24,144,255,0.1); }
+        .tips { font-size: 12px; color: #888; margin-left: 10px; font-weight: normal; }
+
+        .container { display: flex; flex-wrap: wrap; gap: 20px; }
+        
+        .card {
+            background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            padding: 20px; width: 100%; max-width: 360px; box-sizing: border-box;
+            display: flex; flex-direction: column; animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .card-header {
+            display: flex; align-items: center; margin-bottom: 15px;
+            border-bottom: 2px solid var(--bg); padding-bottom: 10px;
+        }
+        .card-header input {
+            font-size: 16px; font-weight: bold; border: none;
+            border-bottom: 1px dashed #ccc; width: 160px; outline: none;
+            color: var(--primary); background: transparent;
+        }
+        
+        .form-group { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .form-group label { font-size: 13px; color: #666; }
+        .form-group input {
+            width: 90px; padding: 5px 8px; border: 1px solid #d9d9d9;
+            border-radius: 4px; text-align: right; font-size: 14px;
+        }
+        .form-group input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 2px rgba(24,144,255,0.1); }
+        .form-group.highlight-input { background: #e6f7ff; padding: 5px 8px; border-radius: 6px; margin: 5px -8px 10px -8px; }
+        .form-group.highlight-input label { color: var(--primary); font-weight: bold; }
+
+        /* V7.0 赠品区新样式 */
+        .gift-container {
+            background: #fafafa; border: 1px dashed #d9d9d9; border-radius: 6px;
+            padding: 10px; margin: 5px -8px 10px -8px;
+        }
+        .gift-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .gift-header-row label { font-size: 12px; color: #888; font-weight: bold; margin:0;}
+        .btn-clear-gift { 
+            background: none; border: none; color: var(--danger); font-size: 12px; 
+            padding: 0; cursor: pointer; opacity: 0.8; font-weight: normal;
+        }
+        .btn-clear-gift:hover { opacity: 1; text-decoration: underline; background: none; transform: none;}
+        
+        .gift-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;}
+        .gift-tag {
+            padding: 4px 8px; background: white; border: 1px solid #d9d9d9;
+            border-radius: 4px; font-size: 12px; cursor: pointer;
+            transition: all 0.1s; user-select: none; color: #555;
+        }
+        .gift-tag:hover { border-color: var(--primary); color: var(--primary); background: #e6f7ff;}
+        .gift-tag:active { transform: scale(0.95); } /* 点击缩放反馈 */
+        
+        .selected-gifts-display {
+            font-size: 12px; color: var(--purple); font-weight: bold;
+            min-height: 18px; line-height: 1.4; padding: 4px; background: #f0f0f0; border-radius: 4px;
+        }
+        
+        .gift-input-group { display: flex; justify-content: space-between; align-items: center; margin-top: 10px;}
+        .gift-input-group label { font-size: 13px; color: #333; margin:0;}
+        .gift-input-group input { width: 90px; padding: 5px 8px; border: 1px solid #d9d9d9; border-radius: 4px; text-align: right; font-size: 14px; color: var(--danger); font-weight: bold;}
+
+        .divider { height: 1px; background-color: #f0f0f0; margin: 15px 0; }
+        .result-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
+        .result-item.main { font-size: 17px; font-weight: bold; margin-top: 5px; padding-top: 10px; border-top: 1px dashed #eee; }
+        .val { font-family: "Monaco", "Consolas", monospace; font-weight: bold; }
+        
+        #toast {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.75); color: white; padding: 12px 24px;
+            border-radius: 50px; display: none; z-index: 1000; font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>💧 净水机活动核算系统 V7.0</h1>
+        <div class="btn-group">
+            <button class="btn-add" onclick="addCard()">＋ 新增活动对比</button>
+            <button class="btn-copy" onclick="copyResults()">📋 复制文本</button>
+            <button class="btn-export" onclick="exportToCSV()">📊 导出表格</button>
+            <div class="btn-like btn-import">
+                📁 导入表格恢复
+                <input type="file" id="fileInput" accept=".csv" onchange="importFromCSV(event)">
+            </div>
+        </div>
+    </div>
+
+    <!-- 顶部全局设置 -->
+    <div class="project-board">
+        <div class="board-row">
+            <label>🏢 总体项目名称：</label>
+            <input type="text" id="globalProjectName" value="2026夏季XX小区净水普及活动" onfocus="this.select()">
+        </div>
+        <div class="board-row">
+            <label>🎁 全局赠品库：</label>
+            <input type="text" id="globalGifts" value="水桶:12, 锁氢袋:2.5, 电动抽水:7, 爬楼车:27, 在线问诊:30, 养生壶:28, 茶吧机:128" onfocus="this.select()">
+            <span class="tips">格式: 赠品名:价格，用逗号分隔。修改后新卡片生效。</span>
+        </div>
+    </div>
+
+    <div class="container" id="cardContainer"></div>
+    <div id="toast">操作成功</div>
+
+    <script>
+        let activityCount = 0;
+
+        const initialDefaults = {
+            recharge: 200,      
+            bonus: 50,          
+            price: 5,           
+            waterCost: 3.5,     
+            otherCost: 0.5,     
+            ro: 3,              
+            giftCost: 0,
+            consult: 1,
+            selectedGifts: {} // 改为对象格式：{'水桶': 2, '锁氢袋': 1}
+        };
+
+        window.onload = () => { addCard(); };
+
+        function parseGlobalGifts() {
+            const str = document.getElementById('globalGifts').value;
+            const items = str.replace(/，/g, ',').split(',');
+            const gifts = [];
+            items.forEach(item => {
+                const parts = item.split(':').map(p => p.trim());
+                if (parts.length === 2 && !isNaN(parseFloat(parts[1]))) {
+                    gifts.push({ name: parts[0], price: parseFloat(parts[1]) });
+                }
+            });
+            return gifts;
+        }
+
+        function addCard(customValues = null) {
+            activityCount++;
+            const cardId = 'card_' + Date.now() + '_' + activityCount; 
+            
+            let currentValues = { ...initialDefaults, selectedGifts: {} };
+            let activityName = `活动方案 ${activityCount}`;
+
+            if (customValues) {
+                currentValues = customValues;
+                if(customValues.name) activityName = customValues.name;
+            } else {
+                // 继承逻辑
+                const existingCards = document.querySelectorAll('.card');
+                if (existingCards.length > 0) {
+                    const last = existingCards[existingCards.length - 1];
+                    let inheritedGifts = {};
+                    try { inheritedGifts = JSON.parse(last.dataset.selectedGifts || "{}"); } catch(e){}
+                    
+                    currentValues = {
+                        recharge: last.querySelector('.i-recharge').value,
+                        bonus: last.querySelector('.i-bonus').value,
+                        price: last.querySelector('.i-price').value,
+                        waterCost: last.querySelector('.i-water').value,
+                        otherCost: last.querySelector('.i-other').value,
+                        ro: last.querySelector('.i-ro').value,
+                        giftCost: last.querySelector('.i-gift').value,
+                        consult: last.querySelector('.i-consult').value,
+                        selectedGifts: inheritedGifts
+                    };
+                }
+            }
+
+            const availableGifts = parseGlobalGifts();
+            let tagsHtml = '';
+            availableGifts.forEach(g => {
+                // 不再记录 active，只作为点击添加的按钮
+                tagsHtml += `<div class="gift-tag" onclick="addGift('${cardId}', '${g.name}', ${g.price})">${g.name}(${g.price})</div>`;
+            });
+
+            // 将对象转为JSON字符串存入 data 属性
+            const selectedGiftsJson = JSON.stringify(currentValues.selectedGifts);
+
+            const html = `
+                <div class="card" id="${cardId}" data-selected-gifts='${selectedGiftsJson}'>
+                    <div class="card-header">
+                        <input type="text" class="i-name" value="${activityName}" oninput="calculate('${cardId}')" onfocus="this.select()">
+                        <button class="btn-del" onclick="removeCard('${cardId}')">删除</button>
+                    </div>
+                    
+                    <div class="form-group"><label>充值金额 (元)</label><input type="number" class="i-recharge" value="${currentValues.recharge}" oninput="calculate('${cardId}')" onfocus="this.select()"></div>
+                    <div class="form-group"><label>赠送金额 (元)</label><input type="number" class="i-bonus" value="${currentValues.bonus}" oninput="calculate('${cardId}')" onfocus="this.select()"></div>
+                    <div class="form-group"><label>7.5L标价 (元/桶)</label><input type="number" class="i-price" value="${currentValues.price}" oninput="calculate('${cardId}')" onfocus="this.select()"></div>
+                    
+                    <div class="form-group highlight-input">
+                        <label>🩺 赠送问诊次数 (次)</label>
+                        <input type="number" class="i-consult" value="${currentValues.consult}" onfocus="this.select()">
+                    </div>
+
+                    <div class="form-group"><label>小区水费 (元/吨)</label><input type="number" class="i-water" value="${currentValues.waterCost}" oninput="calculate('${cardId}')" onfocus="this.select()"></div>
+                    <div class="form-group"><label>电费/滤芯 (元/桶)</label><input type="number" class="i-other" value="${currentValues.otherCost}" oninput="calculate('${cardId}')" onfocus="this.select()"></div>
+                    <div class="form-group"><label>RO损耗 (1:N)</label><input type="number" class="i-ro" value="${currentValues.ro}" oninput="calculate('${cardId}')" onfocus="this.select()"></div>
+                    
+                    <!-- V7.0 赠品模块 -->
+                    <div class="gift-container">
+                        <div class="gift-header-row">
+                            <label>🎁 快捷赠品配置 (点击累加)：</label>
+                            <button type="button" class="btn-clear-gift" onclick="clearGifts('${cardId}')">🗑️ 清空</button>
+                        </div>
+                        <div class="gift-tags">${tagsHtml}</div>
+                        <div class="selected-gifts-display">暂未选择赠品</div>
+                        <div class="gift-input-group">
+                            <label>赠品采购总价(元):</label>
+                            <input type="number" class="i-gift" value="${currentValues.giftCost}" oninput="manualGiftEdit('${cardId}')" onfocus="this.select()">
+                        </div>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <div class="result-item"><span>客户可打水：</span><span class="val o-buckets">0 桶</span></div>
+                    <div class="result-item"><span>单桶实际售价：</span><span class="val o-actual">0.00 元</span></div>
+                    <div class="result-item"><span>单桶生成成本：</span><span class="val o-cost">0.00 元</span></div>
+                    <div class="result-item main"><span>💰 单客总净利：</span><span class="val o-total">0.00 元</span></div>
+                    <div class="result-item main" style="margin-top:0; padding-top:5px; border-top:none;"><span>📈 成本利润率：</span><span class="val o-rate">0.00%</span></div>
+                </div>
+            `;
+            document.getElementById('cardContainer').insertAdjacentHTML('beforeend', html);
+            
+            // 初始化展示列表和计算
+            updateGiftDisplay(cardId);
+            calculate(cardId);
+            updateDeleteButtons();
+        }
+
+        // 添加一个赠品（数量+1）
+        function addGift(cardId, name, price) {
+            const card = document.getElementById(cardId);
+            let gifts = {};
+            try { gifts = JSON.parse(card.dataset.selectedGifts || "{}"); } catch(e){}
+            
+            // 数量递增
+            gifts[name] = (gifts[name] || 0) + 1;
+            card.dataset.selectedGifts = JSON.stringify(gifts);
+
+            // 更新总金额框
+            let currentTotal = parseFloat(card.querySelector('.i-gift').value) || 0;
+            card.querySelector('.i-gift').value = (currentTotal + parseFloat(price)).toFixed(2);
+
+            updateGiftDisplay(cardId);
+            calculate(cardId);
+        }
+
+        // 一键清空赠品
+        function clearGifts(cardId) {
+            const card = document.getElementById(cardId);
+            card.dataset.selectedGifts = "{}";
+            card.querySelector('.i-gift').value = "0";
+            updateGiftDisplay(cardId);
+            calculate(cardId);
+        }
+
+        // 手动修改输入框：如果销售自行打字修改金额，视为脱离标准套餐，清空明细防歧义
+        function manualGiftEdit(cardId) {
+            const card = document.getElementById(cardId);
+            card.dataset.selectedGifts = "{}";
+            updateGiftDisplay(cardId);
+            calculate(cardId);
+        }
+
+        // 更新赠品明细UI显示
+        function updateGiftDisplay(cardId) {
+            const card = document.getElementById(cardId);
+            let gifts = {};
+            try { gifts = JSON.parse(card.dataset.selectedGifts || "{}"); } catch(e){}
+            
+            let displayArr = [];
+            for(let name in gifts) {
+                if(gifts[name] > 0) displayArr.push(`${name} x${gifts[name]}`);
+            }
+            
+            const displayEl = card.querySelector('.selected-gifts-display');
+            if(displayArr.length > 0) {
+                displayEl.innerHTML = '✅ 已选: ' + displayArr.join(', ');
+            } else {
+                // 判断是否是纯手动输入
+                const giftCost = parseFloat(card.querySelector('.i-gift').value) || 0;
+                if(giftCost > 0) displayEl.innerHTML = '⚠️ 已手动修改金额，无明细';
+                else displayEl.innerHTML = '暂未选择赠品';
+            }
+        }
+
+        // 提取赠品明细文本，方便复用
+        function getGiftDetailText(card) {
+            let gifts = {};
+            try { gifts = JSON.parse(card.dataset.selectedGifts || "{}"); } catch(e){}
+            let displayArr = [];
+            for(let name in gifts) {
+                if(gifts[name] > 0) displayArr.push(`${name} x${gifts[name]}`);
+            }
+            if(displayArr.length > 0) return displayArr.join(' + ');
+            const giftCost = parseFloat(card.querySelector('.i-gift').value) || 0;
+            return giftCost > 0 ? "手动核价无明细" : "无";
+        }
+
+        function removeCard(id) { 
+            const card = document.getElementById(id);
+            if(card) { card.remove(); updateDeleteButtons(); }
+        }
+        
+        function updateDeleteButtons() {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach((card) => {
+                const delBtn = card.querySelector('.btn-del');
+                if(delBtn) delBtn.style.display = cards.length === 1 ? 'none' : 'block';
+            });
+        }
+
+        function calculate(cardId) {
+            const card = document.getElementById(cardId);
+            if (!card) return;
+
+            const v = (cls) => parseFloat(card.querySelector(cls).value) || 0;
+
+            const recharge = v('.i-recharge');
+            const bonus = v('.i-bonus');
+            const price = v('.i-price') || 0.01;
+            const water = v('.i-water');
+            const other = v('.i-other');
+            const ro = v('.i-ro');
+            const gift = v('.i-gift');
+
+            const buckets = Math.floor((recharge + bonus) / price);
+            const actualPrice = buckets > 0 ? (recharge / buckets) : 0;
+            const bucketCost = (water * (7.5 / 1000) * ro) + other;
+            const unitMargin = actualPrice - bucketCost;
+            
+            const totalCost = (bucketCost * buckets) + gift;
+            const totalMargin = (unitMargin * buckets) - gift;
+            
+            let profitRateStr = "0.00%";
+            if (totalCost > 0) profitRateStr = ((totalMargin / totalCost) * 100).toFixed(2) + '%';
+            else if (totalMargin > 0) profitRateStr = "∞ (0成本)"; 
+
+            card.querySelector('.o-buckets').innerText = buckets + ' 桶';
+            card.querySelector('.o-actual').innerText = actualPrice.toFixed(2) + ' 元';
+            card.querySelector('.o-cost').innerText = bucketCost.toFixed(3) + ' 元';
+            
+            const tEl = card.querySelector('.o-total');
+            tEl.innerText = totalMargin.toFixed(2) + ' 元';
+            tEl.style.color = totalMargin >= 0 ? 'var(--success)' : 'var(--danger)';
+
+            const rEl = card.querySelector('.o-rate');
+            rEl.innerText = profitRateStr;
+            rEl.style.color = totalMargin >= 0 ? 'var(--success)' : 'var(--danger)';
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg; t.style.display = 'block';
+            setTimeout(() => t.style.display = 'none', 3000);
+        }
+
+        function copyResults() {
+            const projectName = document.getElementById('globalProjectName').value || '未命名项目';
+            let txt = `【📊 项目核算：${projectName}】\n`;
+            
+            document.querySelectorAll('.card').forEach(card => {
+                const giftDesc = getGiftDetailText(card);
+                const giftCost = card.querySelector('.i-gift').value;
+                txt += `------------------\n方案：${card.querySelector('.i-name').value}\n`;
+                txt += `▶ 充${card.querySelector('.i-recharge').value}送${card.querySelector('.i-bonus').value}\n`;
+                txt += `▶ 包含赠品：${giftCost}元 (${giftDesc})\n`;
+                txt += `▶ 赠送问诊：${card.querySelector('.i-consult').value} 次\n`;
+                txt += `▶ 客户可打水：${card.querySelector('.o-buckets').innerText}\n`;
+                txt += `▶ 单客总利润：${card.querySelector('.o-total').innerText}\n`;
+                txt += `▶ 预估利润率：${card.querySelector('.o-rate').innerText}\n`;
+            });
+            const el = document.createElement('textarea'); el.value = txt; document.body.appendChild(el); el.select();
+            document.execCommand('copy'); document.body.removeChild(el);
+            showToast("文本已复制，可直接发微信");
+        }
+
+        function exportToCSV() {
+            const cards = document.querySelectorAll('.card');
+            if (cards.length === 0) return;
+
+            const projectName = document.getElementById('globalProjectName').value || '未命名项目';
+
+            let csvContent = "总体项目名称,活动名称,充值金额,赠送金额,桶标价,赠送问诊(次),小区水费,消耗成本,RO系数,赠品总采购价,包含的具体赠品明细,可打水桶数,实际售价,桶生成成本,单客总净利,成本利润率\n";
+
+            cards.forEach(card => {
+                const row = [
+                    projectName,
+                    card.querySelector('.i-name').value,
+                    card.querySelector('.i-recharge').value,
+                    card.querySelector('.i-bonus').value,
+                    card.querySelector('.i-price').value,
+                    card.querySelector('.i-consult').value, 
+                    card.querySelector('.i-water').value,
+                    card.querySelector('.i-other').value,
+                    card.querySelector('.i-ro').value,
+                    card.querySelector('.i-gift').value,
+                    getGiftDetailText(card), // 导出详细的 x数量
+                    card.querySelector('.o-buckets').innerText.replace(' 桶',''),
+                    card.querySelector('.o-actual').innerText.replace(' 元',''),
+                    card.querySelector('.o-cost').innerText.replace(' 元',''),
+                    card.querySelector('.o-total').innerText.replace(' 元',''),
+                    card.querySelector('.o-rate').innerText
+                ];
+                csvContent += row.join(",") + "\n";
+            });
+
+            const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `${projectName}_核算表_${new Date().toLocaleDateString()}.csv`);
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            showToast("表格下载已开始");
+        }
+
+        function importFromCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                const lines = content.split('\n');
+                if (lines.length <= 1) { showToast("文件为空或格式错误"); return; }
+
+                document.getElementById('cardContainer').innerHTML = '';
+                activityCount = 0; 
+                let projectNameUpdated = false;
+                let importedCount = 0;
+
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+                    
+                    const cols = line.split(',');
+                    if (cols.length >= 10) { 
+                        if (!projectNameUpdated && cols[0]) {
+                            document.getElementById('globalProjectName').value = cols[0];
+                            projectNameUpdated = true;
+                        }
+
+                        // 兼容解析 V7 的详情格式 (如：水桶 x2 + 锁氢袋 x1) 
+                        let importedGifts = {};
+                        if(cols.length >= 16 && cols[10] && cols[10] !== '无' && cols[10] !== '手动核价无明细') {
+                            // 旧版 V6 (逗号分隔): 水桶,锁氢袋
+                            // 新版 V7 (+号或逗号分隔): 水桶 x2 + 锁氢袋 x1
+                            const parts = cols[10].split(/[,+]/); 
+                            parts.forEach(p => {
+                                const str = p.trim();
+                                if(!str) return;
+                                const match = str.match(/(.+?)\s*x(\d+)/); // 匹配 "名称 x数量"
+                                if(match) {
+                                    importedGifts[match[1].trim()] = parseInt(match[2]);
+                                } else {
+                                    // 兼容 V6 的老数据导入，默认数量设为 1
+                                    importedGifts[str] = 1;
+                                }
+                            });
+                        }
+
+                        const importedValues = {
+                            name: cols[1] || `活动方案 ${i}`,
+                            recharge: parseFloat(cols[2]) || 0,
+                            bonus: parseFloat(cols[3]) || 0,
+                            price: parseFloat(cols[4]) || 5,
+                            consult: parseFloat(cols[5]) || 0,
+                            waterCost: parseFloat(cols[6]) || 0,
+                            otherCost: parseFloat(cols[7]) || 0,
+                            ro: parseFloat(cols[8]) || 3,
+                            giftCost: parseFloat(cols[9]) || 0,
+                            selectedGifts: importedGifts
+                        };
+
+                        addCard(importedValues);
+                        importedCount++;
+                    }
+                }
+                
+                document.getElementById('fileInput').value = ''; 
+                
+                if (importedCount > 0) showToast(`✅ 成功导入 ${importedCount} 个活动方案`);
+                else { showToast("❌ 未能解析有效数据"); addCard(); }
+            };
+            
+            reader.readAsText(file, 'UTF-8');
+        }
+    </script>
+</body>
+</html>
