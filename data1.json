@@ -1,0 +1,69 @@
+{
+    "community_name": "测试",
+    "candidates": [
+      {
+        "name": "1",
+        "lat": 34.261829,
+        "lng": 117.155962,
+        "conditions": {
+          "has_power": true,
+          "good_property": false
+        }
+      },
+      {
+        "name": "2",
+        "lat": 34.261873,
+        "lng": 117.155002,
+        "conditions": {
+          "has_power": true,
+          "good_property": false
+        }
+      }
+    ],
+    "buildings": [
+      {
+        "building_name": "1栋",
+        "lat": 34.261667,
+        "lng": 117.155904,
+        "units": [
+          {
+            "name": "1单元",
+            "households": 50
+          }
+        ]
+      },
+      {
+        "building_name": "2栋",
+        "lat": 34.261084,
+        "lng": 117.156087,
+        "units": [
+          {
+            "name": "1单元",
+            "households": 100
+          }
+        ]
+      },
+      {
+        "building_name": "3栋",
+        "lat": 34.261227,
+        "lng": 117.155211,
+        "units": [
+          {
+            "name": "1单元",
+            "households": 50
+          }
+        ]
+      },
+      {
+        "building_name": "4栋",
+        "lat": 34.26238,
+        "lng": 117.155864,
+        "units": [
+          {
+            "name": "1单元",
+            "households": ""
+          }
+        ]
+      }
+    ]
+  }
